@@ -5,7 +5,7 @@
 // Optimisé: Décembre 2025
 // ============================================================================
 
-import * as Sentry from "@sentry/nextjs";
+import * as Sentry from '@sentry/nextjs';
 
 // ===== FILTRAGE DONNÉES SENSIBLES =====
 
@@ -17,7 +17,7 @@ const SENSITIVE_PATTERN =
  * Vérifie si une chaîne contient des données sensibles
  */
 function containsSensitiveData(str) {
-  if (typeof str !== "string") return false;
+  if (typeof str !== 'string') return false;
   return SENSITIVE_PATTERN.test(str);
 }
 
@@ -25,7 +25,7 @@ function containsSensitiveData(str) {
  * Anonymise les données sensibles dans un objet
  */
 function sanitizeObject(obj, maxDepth = 3, currentDepth = 0) {
-  if (!obj || typeof obj !== "object" || currentDepth >= maxDepth) {
+  if (!obj || typeof obj !== 'object' || currentDepth >= maxDepth) {
     return obj;
   }
 
@@ -34,18 +34,18 @@ function sanitizeObject(obj, maxDepth = 3, currentDepth = 0) {
   for (const [key, value] of Object.entries(obj)) {
     // Masquer la clé si elle contient des données sensibles
     if (containsSensitiveData(key)) {
-      sanitized[key] = "[REDACTED]";
+      sanitized[key] = '[REDACTED]';
       continue;
     }
 
     // Masquer la valeur si elle contient des données sensibles
-    if (typeof value === "string" && containsSensitiveData(value)) {
-      sanitized[key] = "[REDACTED]";
+    if (typeof value === 'string' && containsSensitiveData(value)) {
+      sanitized[key] = '[REDACTED]';
       continue;
     }
 
     // Récursion pour objets imbriqués
-    if (typeof value === "object" && value !== null) {
+    if (typeof value === 'object' && value !== null) {
       sanitized[key] = sanitizeObject(value, maxDepth, currentDepth + 1);
     } else {
       sanitized[key] = value;
@@ -66,16 +66,16 @@ function sanitizeUrl(url) {
 
     // Masquer les query params sensibles
     const sensitiveParams = [
-      "token",
-      "key",
-      "secret",
-      "password",
-      "code",
-      "auth",
+      'token',
+      'key',
+      'secret',
+      'password',
+      'code',
+      'auth',
     ];
     sensitiveParams.forEach((param) => {
       if (urlObj.searchParams.has(param)) {
-        urlObj.searchParams.set(param, "[REDACTED]");
+        urlObj.searchParams.set(param, '[REDACTED]');
       }
     });
 
@@ -115,7 +115,7 @@ Sentry.init({
     // Browser tracing (performance monitoring)
     Sentry.browserTracingIntegration({
       tracePropagationTargets: [
-        "localhost",
+        'localhost',
         /^https?:\/\/[^/]*\.votre-domaine\.com/,
       ],
     }),
@@ -127,8 +127,8 @@ Sentry.init({
   // Garder uniquement les erreurs vraiment non-actionnables
   ignoreErrors: [
     // Erreurs browser internes
-    "ResizeObserver loop",
-    "ResizeObserver loop completed with undelivered notifications",
+    'ResizeObserver loop',
+    'ResizeObserver loop completed with undelivered notifications',
 
     // Erreurs extensions navigateur
     /chrome-extension:\/\//i,
@@ -136,13 +136,13 @@ Sentry.init({
     /safari-extension:\/\//i,
 
     // Erreurs génériques non-utiles
-    "Script error",
-    "Script error.",
-    "Non-Error promise rejection captured",
+    'Script error',
+    'Script error.',
+    'Non-Error promise rejection captured',
 
     // Erreurs réseau attendues (à adapter selon vos besoins)
-    "NetworkError",
-    "Failed to fetch",
+    'NetworkError',
+    'Failed to fetch',
   ],
 
   // ===== FILTRAGE PAR URL =====
@@ -159,9 +159,9 @@ Sentry.init({
     // Au lieu de ça, on filtre les données
     const pathname = window.location.pathname;
     const isSensitivePage =
-      pathname.includes("/login") ||
-      pathname.includes("/register") ||
-      pathname.includes("/auth");
+      pathname.includes('/login') ||
+      pathname.includes('/register') ||
+      pathname.includes('/auth');
 
     if (isSensitivePage) {
       // Anonymiser les données request
@@ -180,9 +180,9 @@ Sentry.init({
 
       // Anonymiser les données user
       if (event.user) {
-        if (event.user.email) event.user.email = "[REDACTED]";
-        if (event.user.username) event.user.username = "[REDACTED]";
-        if (event.user.ip_address) event.user.ip_address = "[REDACTED]";
+        if (event.user.email) event.user.email = '[REDACTED]';
+        if (event.user.username) event.user.username = '[REDACTED]';
+        if (event.user.ip_address) event.user.ip_address = '[REDACTED]';
       }
     }
 
@@ -202,7 +202,7 @@ Sentry.init({
           crumb.data = sanitizeObject(crumb.data);
         }
         if (crumb.message && containsSensitiveData(crumb.message)) {
-          crumb.message = "[REDACTED - Sensitive data]";
+          crumb.message = '[REDACTED - Sensitive data]';
         }
         return crumb;
       });
@@ -233,7 +233,7 @@ Sentry.init({
 
     // Masquer message si sensible
     if (breadcrumb.message && containsSensitiveData(breadcrumb.message)) {
-      breadcrumb.message = "[REDACTED - Sensitive data in breadcrumb]";
+      breadcrumb.message = '[REDACTED - Sensitive data in breadcrumb]';
     }
 
     return breadcrumb;
@@ -248,11 +248,27 @@ Sentry.init({
   maxBreadcrumbs: 50,
 
   // Désactiver les logs console en production
-  debug: process.env.NODE_ENV === "development",
+  debug: process.env.NODE_ENV === 'development',
 
   // Désactiver l'envoi d'informations PII par défaut
   sendDefaultPii: false,
 });
+
+/**
+ * ⚠️ IMPORTANT - Export requis pour Next.js 15
+ *
+ * Cette fonction permet à Sentry de capturer les transitions de navigation
+ * dans votre application Next.js (changements de route côté client).
+ *
+ * Cela permet de :
+ * - Tracer les navigations dans les breadcrumbs
+ * - Comprendre le parcours utilisateur avant une erreur
+ * - Capturer les erreurs qui surviennent pendant la navigation
+ *
+ * Note : Cela ne crée PAS de spans de performance car vous n'avez pas
+ * défini tracesSampleRate (monitoring d'erreurs uniquement).
+ */
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
 
 // ============================================================================
 // NOTES DE MIGRATION

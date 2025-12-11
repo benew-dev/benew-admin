@@ -8,8 +8,8 @@
 export async function register() {
   // Import configuration serveur Node.js uniquement
   // Edge runtime supprimé car non utilisé dans une app admin classique
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    await import("./sentry.server.config");
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./sentry.server.config');
   }
 
   // Note: Edge runtime configuration supprimée
@@ -35,3 +35,9 @@ export async function register() {
 // Pour une app admin avec 5 users/jour = Non nécessaire
 //
 // ============================================================================
+
+/**
+ * Hook Next.js 15 - Capture des erreurs de requête serveur
+ * Utilise le hook officiel Sentry pour Next.js
+ */
+export const onRequestError = Sentry.captureRequestError;
