@@ -6,17 +6,18 @@
     //A series of entries which re-map imports to lookup locations relative to the baseUrl if set,
     // or to the tsconfig file itself otherwise.
     "paths": {
-      "@app/*": ["./app/*"],
-      "@api/*": ["./app/api/*"],
-      "@dashboard/*": ["./app/dashboard/*"],
-      "@backend/*": ["./backend/*"],
-      "@ui/*": ["./ui/*"],
-      "@components/*": ["./ui/components/dashboard/*"],
-      "@pages/*": ["./ui/pages/*"],
-      "@styling/*": ["./ui/styling/*"],
-      "@utils/*": ["./utils/*"],
-      "@providers/*": ["./providers/*"],
-      "@monitoring/*": ["./monitoring/*"]
+      "@/app/*": ["./app/*"],
+      "@/api/*": ["./app/api/*"],
+      "@/dashboard/*": ["./app/dashboard/*"],
+      "@/backend/*": ["./backend/*"],
+      "@/ui/*": ["./ui/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/components/*": ["./ui/components/dashboard/*"],
+      "@/pages/*": ["./ui/pages/*"],
+      "@/styling/*": ["./ui/styling/*"],
+      "@/utils/*": ["./utils/*"],
+      "@/providers/*": ["./providers/*"],
+      "@/monitoring/*": ["./monitoring/*"]
     },
 
     // Controls how JSX constructs are emitted in JavaScript files.
