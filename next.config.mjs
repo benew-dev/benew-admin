@@ -1,4 +1,4 @@
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from '@sentry/nextjs';
 
 // ============================================================================
 // CONFIGURATION NEXT.JS 15.5.7 OPTIMISÉE
@@ -11,27 +11,27 @@ import { withSentryConfig } from "@sentry/nextjs";
 // ===== VALIDATION ENVIRONNEMENT =====
 const validateEnv = () => {
   const requiredVars = [
-    "NEXT_PUBLIC_SITE_URL",
-    "BETTER_AUTH_SECRET",
-    "BETTER_AUTH_URL",
-    "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME",
-    "NEXT_PUBLIC_CLOUDINARY_API_KEY",
-    "CLOUDINARY_API_SECRET",
-    "USER_NAME",
-    "HOST_NAME",
-    "DB_NAME",
-    "DB_PASSWORD",
-    "PORT_NUMBER",
-    "NEXT_PUBLIC_SENTRY_DSN",
+    'NEXT_PUBLIC_SITE_URL',
+    'BETTER_AUTH_SECRET',
+    'BETTER_AUTH_URL',
+    'NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME',
+    'NEXT_PUBLIC_CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET',
+    'USER_NAME',
+    'HOST_NAME',
+    'DB_NAME',
+    'DB_PASSWORD',
+    'PORT_NUMBER',
+    'NEXT_PUBLIC_SENTRY_DSN',
   ];
 
   const missingVars = requiredVars.filter((varName) => !process.env[varName]);
 
-  if (missingVars.length > 0 && process.env.NODE_ENV === "production") {
+  if (missingVars.length > 0 && process.env.NODE_ENV === 'production') {
     throw new Error(
       `Production build failed: Missing required environment variables: ${missingVars.join(
-        ", "
-      )}`
+        ', ',
+      )}`,
     );
   }
 };
@@ -39,63 +39,63 @@ const validateEnv = () => {
 validateEnv();
 
 // ===== HELPERS POUR HEADERS =====
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "same-origin";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'same-origin';
 
 // Headers de sécurité globaux (appliqués partout)
 const getSecurityHeaders = () => [
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "X-XSS-Protection", value: "1; mode=block" },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-XSS-Protection', value: '1; mode=block' },
   {
-    key: "Strict-Transport-Security",
-    value: "max-age=31536000; includeSubDomains; preload",
+    key: 'Strict-Transport-Security',
+    value: 'max-age=31536000; includeSubDomains; preload',
   },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  { key: "Cross-Origin-Resource-Policy", value: "same-site" },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-site' },
   {
-    key: "Permissions-Policy",
-    value: "geolocation=(), microphone=(), camera=(), payment=(), usb=()",
+    key: 'Permissions-Policy',
+    value: 'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
   },
 ];
 
 // Headers pour mutations sensibles (add/edit/delete)
 const getMutationHeaders = () => [
   ...getSecurityHeaders(),
-  { key: "Access-Control-Allow-Origin", value: SITE_URL },
-  { key: "Access-Control-Allow-Methods", value: "POST, PUT, DELETE, OPTIONS" },
+  { key: 'Access-Control-Allow-Origin', value: SITE_URL },
+  { key: 'Access-Control-Allow-Methods', value: 'POST, PUT, DELETE, OPTIONS' },
   {
-    key: "Access-Control-Allow-Headers",
-    value: "Content-Type, Authorization, X-Requested-With",
+    key: 'Access-Control-Allow-Headers',
+    value: 'Content-Type, Authorization, X-Requested-With',
   },
   {
-    key: "Cache-Control",
-    value: "no-store, no-cache, must-revalidate, max-age=0",
+    key: 'Cache-Control',
+    value: 'no-store, no-cache, must-revalidate, max-age=0',
   },
-  { key: "Pragma", value: "no-cache" },
-  { key: "Expires", value: "0" },
+  { key: 'Pragma', value: 'no-cache' },
+  { key: 'Expires', value: '0' },
   {
-    key: "Content-Security-Policy",
+    key: 'Content-Security-Policy',
     value: "default-src 'none'; connect-src 'self'",
   },
 ];
 
-// Headers pour authentification NextAuth
+// Headers pour authentification Better Auth
 const getAuthHeaders = () => [
   ...getSecurityHeaders(),
-  { key: "Access-Control-Allow-Origin", value: SITE_URL },
-  { key: "Access-Control-Allow-Methods", value: "GET, POST, OPTIONS" },
+  { key: 'Access-Control-Allow-Origin', value: SITE_URL },
+  { key: 'Access-Control-Allow-Methods', value: 'GET, POST, OPTIONS' },
   {
-    key: "Access-Control-Allow-Headers",
-    value: "Content-Type, Authorization, X-Requested-With, Cookie",
+    key: 'Access-Control-Allow-Headers',
+    value: 'Content-Type, Authorization, X-Requested-With, Cookie',
   },
-  { key: "Access-Control-Allow-Credentials", value: "true" },
+  { key: 'Access-Control-Allow-Credentials', value: 'true' },
   {
-    key: "Cache-Control",
-    value: "no-store, no-cache, must-revalidate, max-age=0",
+    key: 'Cache-Control',
+    value: 'no-store, no-cache, must-revalidate, max-age=0',
   },
   {
-    key: "Content-Security-Policy",
+    key: 'Content-Security-Policy',
     value:
       "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
   },
@@ -103,23 +103,23 @@ const getAuthHeaders = () => [
 
 // Headers pour assets statiques
 const getStaticAssetHeaders = () => [
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
-  { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
+  { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
 ];
 
 // Headers pour signatures Cloudinary
 const getCloudinaryHeaders = () => [
   ...getSecurityHeaders(),
-  { key: "Access-Control-Allow-Origin", value: SITE_URL },
-  { key: "Access-Control-Allow-Methods", value: "POST, OPTIONS" },
+  { key: 'Access-Control-Allow-Origin', value: SITE_URL },
+  { key: 'Access-Control-Allow-Methods', value: 'POST, OPTIONS' },
   {
-    key: "Cache-Control",
-    value: "no-store, no-cache, must-revalidate, max-age=0",
+    key: 'Cache-Control',
+    value: 'no-store, no-cache, must-revalidate, max-age=0',
   },
-  { key: "Referrer-Policy", value: "no-referrer" },
+  { key: 'Referrer-Policy', value: 'no-referrer' },
   {
-    key: "Content-Security-Policy",
+    key: 'Content-Security-Policy',
     value:
       "script-src https://upload-widget.cloudinary.com; connect-src 'self' https://api.cloudinary.com https://upload-widget.cloudinary.com",
   },
@@ -134,12 +134,12 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-        pathname: "**",
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '**',
       },
     ],
-    formats: ["image/avif", "image/webp"],
+    formats: ['image/avif', 'image/webp'],
   },
 
   // Utiliser Turbopack (recommandé Next.js 15.5+)
@@ -149,64 +149,77 @@ const nextConfig = {
   // Configuration Headers HTTP
   async headers() {
     return [
-      // ===== 1. ROUTES NEXTAUTH (Priorité Haute) =====
+      // ===== 1. ROUTES BETTER AUTH (Priorité Haute) =====
       {
-        source: "/api/auth/callback/credentials",
+        source: '/api/auth/callback/credentials',
         headers: getAuthHeaders(),
       },
       {
-        source: "/api/auth/session",
+        source: '/api/auth/session',
         headers: getAuthHeaders(),
       },
       {
-        source: "/api/auth/:path*",
+        source: '/api/auth/:path*',
         headers: getAuthHeaders(),
       },
 
       // ===== 2. INSCRIPTION =====
       {
-        source: "/api/register",
+        source: '/api/register',
         headers: [
           ...getMutationHeaders(),
-          { key: "X-Data-Sensitivity", value: "high" },
-          { key: "X-PII-Processing", value: "true" },
+          { key: 'X-Data-Sensitivity', value: 'high' },
+          { key: 'X-PII-Processing', value: 'true' },
         ],
       },
 
-      // ===== 3. MUTATIONS DASHBOARD (Pattern groupé) =====
+      // ===== 3. MUTATIONS DASHBOARD - CORRIGÉ =====
+      // Pattern 1: Actions "add"
       {
         source:
-          "/api/dashboard/:entity(templates|applications|platforms|blog)/:action(add|[^/]+/(edit|delete))",
+          '/api/dashboard/:entity(templates|applications|platforms|blog)/add',
+        headers: getMutationHeaders(),
+      },
+      // Pattern 2: Actions "edit"
+      {
+        source:
+          '/api/dashboard/:entity(templates|applications|platforms|blog)/:id/edit',
+        headers: getMutationHeaders(),
+      },
+      // Pattern 3: Actions "delete"
+      {
+        source:
+          '/api/dashboard/:entity(templates|applications|platforms|blog)/:id/delete',
         headers: getMutationHeaders(),
       },
 
-      // ===== 4. SIGNATURES CLOUDINARY (Pattern groupé) =====
+      // ===== 4. SIGNATURES CLOUDINARY =====
       {
         source:
-          "/api/dashboard/:entity(templates|applications|blog)/add/sign-image",
+          '/api/dashboard/:entity(templates|applications|blog)/add/sign-image',
         headers: getCloudinaryHeaders(),
       },
 
       // ===== 5. ASSETS STATIQUES =====
       {
-        source: "/_next/static/:path*",
+        source: '/_next/static/:path*',
         headers: getStaticAssetHeaders(),
       },
       {
-        source: "/:path*\\.(woff|woff2|eot|ttf|otf)",
+        source: '/:path*\\.(woff|woff2|eot|ttf|otf)',
         headers: [
           ...getStaticAssetHeaders(),
-          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
         ],
       },
       {
-        source: "/:path*\\.(jpg|jpeg|png|gif|webp|svg|ico)",
+        source: '/:path*\\.(jpg|jpeg|png|gif|webp|svg|ico)',
         headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
           {
-            key: "Cache-Control",
-            value: "public, max-age=86400, stale-while-revalidate=3600",
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=3600',
           },
         ],
       },
@@ -222,12 +235,12 @@ const nextConfig = {
   },
 
   // Output standalone pour déploiement (production uniquement)
-  output: process.env.NODE_ENV === "production" ? "standalone" : undefined,
+  output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
 
   // Logging optimisé
   logging: {
     fetches: {
-      fullUrl: process.env.NODE_ENV === "development",
+      fullUrl: process.env.NODE_ENV === 'development',
     },
   },
 };
@@ -239,73 +252,50 @@ const sentryOptions = {
   authToken: process.env.SENTRY_AUTH_TOKEN,
 
   // Options essentielles uniquement
-  silent: process.env.NODE_ENV === "production",
+  silent: process.env.NODE_ENV === 'production',
   hideSourceMaps: true,
   widenClientFileUpload: true,
 
   // Désactiver en dev ou si pas de token
   dryRun:
-    process.env.NODE_ENV !== "production" || !process.env.SENTRY_AUTH_TOKEN,
+    process.env.NODE_ENV !== 'production' || !process.env.SENTRY_AUTH_TOKEN,
 };
 
 // ===== EXPORT AVEC SENTRY =====
 export default withSentryConfig(nextConfig, sentryOptions);
 
 // ============================================================================
-// NOTES DE MIGRATION
+// NOTES DE CORRECTION - VERCEL DEPLOYMENT FIX
 // ============================================================================
 //
-// CHANGEMENTS MAJEURS vs ancienne config:
+// PROBLÈME RÉSOLU:
+// - Pattern complexe avec groupes de capture imbriqués non supporté par Next.js
+// - Ancien: `:action(add|[^/]+/(edit|delete))` ❌
+// - Cause: Groupe `(edit|delete)` imbriqué dans `[^/]+/`
 //
-// 1. SUPPRIMÉ (inutile pour 5 users/jour):
-//    - 40+ configurations de headers distinctes → 10 patterns groupés
-//    - Headers de rate limiting statiques (X-RateLimit-*) → géré côté API
-//    - Headers métier détaillés (X-Database-Operations, etc.) → non nécessaires
-//    - Configuration webpack custom → utiliser Turbopack à la place
-//    - Bundle analyzer constant → utiliser ponctuellement: ANALYZE=true npm run build
-//    - Split chunks custom → Next.js defaults suffisent
-//    - Optimisations webpack avancées → obsolètes avec Turbopack
+// SOLUTION APPLIQUÉE:
+// - Séparation en 3 patterns simples au lieu d'1 pattern complexe
+// - Pattern 1: `/api/dashboard/:entity/add` ✅
+// - Pattern 2: `/api/dashboard/:entity/:id/edit` ✅
+// - Pattern 3: `/api/dashboard/:entity/:id/delete` ✅
 //
-// 2. SIMPLIFIÉ:
-//    - Headers regroupés par pattern (mutations, auth, assets)
-//    - Sentry: 5 options essentielles vs 15+
-//    - Validation env: garde l'essentiel uniquement
+// COUVERTURE IDENTIQUE:
+// - Avant: 1 pattern couvrait add, edit, delete
+// - Après: 3 patterns couvrent add, edit, delete
+// - Même fonctionnalité, compatible Vercel ✅
 //
-// 3. CONSERVÉ (essentiel):
-//    - Tous les headers de sécurité critiques
-//    - Configuration images Cloudinary
-//    - Headers NextAuth spécifiques
-//    - Validation environnement production
-//
-// 4. POUR ACTIVER TURBOPACK:
-//    package.json:
-//    "dev": "next dev --turbopack",
-//    "build": "next build --turbopack"
-//
-// 5. BUNDLE ANALYZER (usage ponctuel):
-//    npm install --save-dev @next/bundle-analyzer
-//    ANALYZE=true npm run build
-//
-// ============================================================================
-// PERFORMANCE ATTENDUE
-// ============================================================================
-//
-// Avant (webpack):
-// - Build: ~30-45s
-// - Dev startup: ~8-12s
-// - Hot reload: ~2-3s
-//
-// Après (turbopack):
-// - Build: ~15-25s
-// - Dev startup: ~2-4s
-// - Hot reload: ~0.5-1s
-//
-// Complexité:
-// - Avant: ~1000 lignes
-// - Après: ~250 lignes (-75%)
-//
-// Maintenabilité:
-// - Toute modification de sécurité = 1 fonction à modifier vs 20+ endroits
-// - Pattern-based = scalable si besoin de granularité future
+// ROUTES COUVERTES:
+// ✅ /api/dashboard/templates/add
+// ✅ /api/dashboard/templates/123/edit
+// ✅ /api/dashboard/templates/123/delete
+// ✅ /api/dashboard/applications/add
+// ✅ /api/dashboard/applications/456/edit
+// ✅ /api/dashboard/applications/456/delete
+// ✅ /api/dashboard/platforms/add
+// ✅ /api/dashboard/platforms/789/edit
+// ✅ /api/dashboard/platforms/789/delete
+// ✅ /api/dashboard/blog/add
+// ✅ /api/dashboard/blog/abc/edit
+// ✅ /api/dashboard/blog/abc/delete
 //
 // ============================================================================
