@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signUp } from '@/lib/auth-client';
-import { registrationSchema } from '@utils/schemas/authSchema';
+import { registrationSchema } from '@/utils/schemas/authSchema';
 import '@/ui/styling/register/register.css';
 
 export default function RegistrationPage() {

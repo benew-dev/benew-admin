@@ -11,7 +11,6 @@ import {
 import Image from 'next/image';
 import MenuLink from './menuLink';
 import styles from './sidebar.module.css';
-import { signOut } from 'next-auth/react';
 
 const menuItems = [
   {
@@ -57,9 +56,9 @@ const menuItems = [
 ];
 
 function Sidebar() {
-  const logoutHandler = () => {
-    signOut();
-  };
+  // const logoutHandler = () => {
+  //   signOut();
+  // };
 
   return (
     <div className={styles.container}>
@@ -87,7 +86,7 @@ function Sidebar() {
         ))}
       </ul>
       <form>
-        <button className={styles.logout} type="button" onClick={logoutHandler}>
+        <button className={styles.logout} type="button">
           <MdLogout />
           Logout
         </button>
