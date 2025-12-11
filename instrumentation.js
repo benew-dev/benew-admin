@@ -1,10 +1,16 @@
 // ============================================================================
-// INSTRUMENTATION NEXT.JS 15 + SENTRY 10.29.0
+// INSTRUMENTATION NEXT.JS 15 + SENTRY 10.29.0 - VERSION CORRIGÉE
 // ============================================================================
 // Application: Admin Dashboard (5 utilisateurs/jour)
 // Optimisé: Décembre 2025
+// FIX: Import Sentry correct pour captureRequestError
 // ============================================================================
 
+import * as Sentry from '@sentry/nextjs';
+
+/**
+ * Register hook - Charge la config Sentry serveur
+ */
 export async function register() {
   // Import configuration serveur Node.js uniquement
   // Edge runtime supprimé car non utilisé dans une app admin classique
@@ -23,9 +29,9 @@ export async function register() {
 // NOTES
 // ============================================================================
 //
-// CHANGEMENTS vs ancienne version:
-// - Edge config supprimée (250 lignes dupliquées inutiles)
-// - Garde uniquement Node.js runtime pour app admin standard
+// CHANGEMENTS vs version buggée:
+// - ✅ Import Sentry ajouté en ligne 8
+// - ✅ captureRequestError fonctionne maintenant
 //
 // Edge runtime est nécessaire UNIQUEMENT si vous utilisez:
 // - Vercel Edge Functions
@@ -38,6 +44,6 @@ export async function register() {
 
 /**
  * Hook Next.js 15 - Capture des erreurs de requête serveur
- * Utilise le hook officiel Sentry pour Next.js
+ * ✅ FIX: Import Sentry maintenant présent en ligne 8
  */
 export const onRequestError = Sentry.captureRequestError;
