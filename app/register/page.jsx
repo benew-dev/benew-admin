@@ -68,6 +68,8 @@ export default function RegistrationPage() {
         name: formData.username,
         email: formData.email,
         password: formData.password,
+        phone: formData.phone, // ← Champs additionnels
+        birthdate: formData.dateOfBirth,
         // Champs additionnels (phone, birthdate)
         // Seront passés via callbackURL ou session custom
         callbackURL: '/login',
