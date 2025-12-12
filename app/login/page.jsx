@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import '@/ui/styling/login/login.css';
+import LoginForm from '@/ui/components/dashboard/auth/LoginForm';
 
 /**
  * LOGIN PAGE - Server Component
