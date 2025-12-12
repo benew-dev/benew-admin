@@ -12,7 +12,9 @@ export async function middleware(request) {
 
   // Routes protégées : vérifier le cookie de session Better Auth
   // ⚠️ Better Auth utilise par défaut le nom 'better-auth.session_token'
-  const sessionToken = request.cookies.get('better-auth.session_token');
+  const sessionToken = request.cookies.get(
+    '__Secure-better-auth.session_token',
+  );
 
   if (!sessionToken) {
     const url = new URL('/login', request.url);
