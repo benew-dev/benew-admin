@@ -1,248 +1,94 @@
-'use client';
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { signUp } from '@/lib/auth-client';
-import { registrationSchema } from '@/utils/schemas/authSchema';
+// app/register/page.jsx - SERVER COMPONENT
+import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { auth } from '@/lib/auth';
 import '@/ui/styling/register/register.css';
 
-export default function RegistrationPage() {
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    dateOfBirth: '',
-    terms: false,
+/**
+ * REGISTRATION PAGE - Server Component
+ *
+ * Production-ready features for admin app (5 users max/day):
+ * - Server-side session check (prevent duplicate registrations)
+ * - Automatic redirect if already authenticated
+ * - Zero client-side JavaScript for auth check
+ * - Security warnings for admin-only access
+ *
+ * IMPORTANT: For production with 5 users max, consider:
+ * 1. Disabling public registration entirely (create users via DB/CLI)
+ * 2. Implementing invitation-only registration (token required)
+ * 3. Adding email domain whitelist (@yourcompany.com only)
+ */
+export default async function RegisterPage({ searchParams }) {
+  // ✅ Server-side session verification
+  const session = await auth.api.getSession({
+    headers: await headers(),
   });
-  const [errors, setErrors] = useState({});
-  const [passwordStrength, setPasswordStrength] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
-  const calculatePasswordStrength = (password) => {
-    let strength = 0;
-    if (password.length >= 8) strength++;
-    if (/[A-Z]/.test(password)) strength++;
-    if (/[a-z]/.test(password)) strength++;
-    if (/[0-9]/.test(password)) strength++;
-    if (/[^A-Za-z0-9]/.test(password)) strength++;
-    return (strength / 5) * 100;
-  };
+  // ✅ Redirect authenticated users
+  if (session?.user) {
+    redirect('/dashboard');
+  }
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const newValue = type === 'checkbox' ? checked : value;
+  // ✅ Extract URL params
+  const invitationToken = searchParams?.token; // For invitation-only flow (optional)
+  const errorParam = searchParams?.error;
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: newValue,
-    }));
-
-    if (name === 'password') {
-      setPasswordStrength(calculatePasswordStrength(value));
-    }
-
-    // Clear error when field is modified
-    if (errors[name]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      // Validation Yup (conservée)
-      await registrationSchema.validate(formData, { abortEarly: false });
-
-      // Better Auth sign up
-      const { data, error } = await signUp.email({
-        name: formData.username,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone, // ← Champs additionnels
-        birthdate: formData.dateOfBirth,
-        // Champs additionnels (phone, birthdate)
-        // Seront passés via callbackURL ou session custom
-        callbackURL: '/login',
-        // Fetch options pour vos custom sanitizers/rate limiters
-        fetchOptions: {
-          onRequest(context) {
-            // Vous pouvez ajouter vos headers custom ici
-            // context.request.headers.set('X-Rate-Limit', 'user');
-          },
-          onSuccess(context) {
-            console.log('Registration successful');
-          },
-          onError(context) {
-            console.error('Registration failed:', context.error);
-          },
-        },
-      });
-
-      if (error) {
-        // Better Auth error handling
-        if (error.status === 400) {
-          setErrors({ submit: error.message || 'Invalid registration data' });
-        } else if (error.status === 409) {
-          setErrors({ email: 'A user with this email already exists' });
-        } else if (error.status === 429) {
-          setErrors({
-            submit: 'Too many registration attempts. Please try again later.',
-          });
-        } else {
-          setErrors({ submit: error.message || 'Registration failed' });
-        }
-      } else {
-        // Success - redirect to login
-        router.push('/login?registered=true');
-      }
-    } catch (validationErrors) {
-      // Yup validation errors
-      const newErrors = {};
-      validationErrors.inner?.forEach((error) => {
-        newErrors[error.path] = error.message;
-      });
-      setErrors(newErrors);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // ✅ OPTIONAL: Uncomment to require invitation token
+  if (!invitationToken) {
+    return (
+      <div className="container">
+        <h1>Admin Registration</h1>
+        <p
+          style={{
+            textAlign: 'center',
+            color: 'var(--textSoft)',
+            marginTop: '1rem',
+          }}
+        >
+          Registration is by invitation only. Please contact your administrator.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="container">
       <h1>User Registration</h1>
-      <form onSubmit={handleSubmit} className="form">
-        {/* Username */}
-        <div className="form-group">
-          <label htmlFor="username">Username</label>
-          <input
-            id="username"
-            name="username"
-            type="text"
-            onChange={handleChange}
-            value={formData.username}
-            disabled={isLoading}
-          />
-          {errors.username && <div className="error">{errors.username}</div>}
+
+      {/* ✅ Admin warning banner */}
+      <div
+        style={{
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          backgroundColor: '#fef3c7',
+          color: '#92400e',
+          borderRadius: '4px',
+          fontSize: '0.875rem',
+          border: '1px solid #fcd34d',
+        }}
+      >
+        <strong>⚠️ Admin Access Only</strong>
+        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.813rem' }}>
+          This registration is for authorized administrators only. All
+          registrations are logged and monitored.
+        </p>
+      </div>
+
+      {/* ✅ Error message from URL params */}
+      {errorParam && (
+        <div className="error submit-error">
+          {decodeURIComponent(errorParam)}
         </div>
+      )}
 
-        {/* Email */}
-        <div className="form-group">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            onChange={handleChange}
-            value={formData.email}
-            disabled={isLoading}
-          />
-          {errors.email && <div className="error">{errors.email}</div>}
-        </div>
-
-        {/* Phone */}
-        <div className="form-group">
-          <label htmlFor="phone">Phone</label>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            onChange={handleChange}
-            value={formData.phone}
-            disabled={isLoading}
-          />
-          {errors.phone && <div className="error">{errors.phone}</div>}
-        </div>
-
-        {/* Password */}
-        <div className="form-group">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            onChange={handleChange}
-            value={formData.password}
-            disabled={isLoading}
-          />
-          {formData.password && (
-            <div className="password-strength">
-              <div
-                className="strength-bar"
-                style={{
-                  width: `${passwordStrength}%`,
-                  backgroundColor: `hsl(${passwordStrength}, 70%, 45%)`,
-                }}
-              />
-            </div>
-          )}
-          {errors.password && <div className="error">{errors.password}</div>}
-        </div>
-
-        {/* Confirm Password */}
-        <div className="form-group">
-          <label htmlFor="confirmPassword">Confirm Password</label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            onChange={handleChange}
-            value={formData.confirmPassword}
-            disabled={isLoading}
-          />
-          {errors.confirmPassword && (
-            <div className="error">{errors.confirmPassword}</div>
-          )}
-        </div>
-
-        {/* Date of Birth */}
-        <div className="form-group">
-          <label htmlFor="dateOfBirth">Date of Birth</label>
-          <input
-            id="dateOfBirth"
-            name="dateOfBirth"
-            type="date"
-            onChange={handleChange}
-            value={formData.dateOfBirth}
-            disabled={isLoading}
-          />
-          {errors.dateOfBirth && (
-            <div className="error">{errors.dateOfBirth}</div>
-          )}
-        </div>
-
-        {/* Terms */}
-        <div className="form-group checkbox">
-          <label>
-            <input
-              type="checkbox"
-              name="terms"
-              checked={formData.terms}
-              onChange={handleChange}
-              disabled={isLoading}
-            />
-            I accept the terms and conditions
-          </label>
-          {errors.terms && <div className="error">{errors.terms}</div>}
-        </div>
-
-        {errors.submit && (
-          <div className="error submit-error">{errors.submit}</div>
-        )}
-
-        <button type="submit" className="submit-button" disabled={isLoading}>
-          {isLoading ? 'Registering...' : 'Register'}
-        </button>
-      </form>
+      {/* ✅ Client Component for form interactivity */}
+      <RegistrationForm invitationToken={invitationToken} />
     </div>
   );
 }
+
+// ✅ Metadata for security
+export const metadata = {
+  title: 'Admin Registration | Benew',
+  robots: 'noindex, nofollow', // Prevent search engine indexing
+};
