@@ -5,9 +5,11 @@
  * - ✅ Username sanitization alignée avec Yup (espaces autorisés)
  * - ✅ Date sanitization robuste (accepte / et -, retourne null si invalide)
  * - ✅ Suppression suspiciousPatterns (redondant avec Yup)
- * - ✅ Utilisation console Winston
+ * - ✅ Utilisation logger Winston
  * - ✅ Cohérence avec authSchema.js
  */
+
+import logger from '@/utils/logger';
 
 /**
  * Sanitize registration form data
@@ -106,7 +108,7 @@ export const sanitizeRegistrationInputs = (formData) => {
     );
 
     if (changedFields.length > 0) {
-      console.debug('Registration inputs sanitized', {
+      logger.debug('Registration inputs sanitized', {
         component: 'sanitizer',
         action: 'registration_sanitize',
         changedFields,
@@ -207,7 +209,7 @@ RÉSUMÉ CHANGEMENTS:
 ✅ SIMPLIFICATIONS (165 → 120 lignes = -27%)
   - Suppression suspiciousPatterns (20 lignes)
   - Code plus lisible
-  - console.debug au lieu de console.warn
+  - logger.debug au lieu de console.warn
 
 ✅ COHÉRENCE
   - Aligné avec authSchema.js

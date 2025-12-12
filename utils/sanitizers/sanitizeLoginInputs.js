@@ -5,9 +5,11 @@
  * - ✅ Email sanitization corrigée (pas de suppression caractères valides)
  * - ✅ Suppression detectSuspiciousLoginActivity (redondant avec rateLimiter)
  * - ✅ Suppression suspiciousPatterns (Yup + parameterized queries suffisent)
- * - ✅ Utilisation logger Winston au lieu de logger.warn
+ * - ✅ Utilisation logger Winston au lieu de console.warn
  * - ✅ Code plus simple et cohérent avec validation Yup
  */
+
+import logger from '@/utils/logger';
 
 /**
  * Sanitize login form data
@@ -51,7 +53,7 @@ export const sanitizeLoginInputs = (formData) => {
     );
 
     if (changedFields.length > 0) {
-      console.debug('Login inputs sanitized', {
+      logger.debug('Login inputs sanitized', {
         component: 'sanitizer',
         action: 'login_sanitize',
         changedFields,
@@ -158,7 +160,7 @@ RÉSUMÉ CHANGEMENTS:
 ✅ CORRECTIONS CRITIQUES
   - Email: Pas de suppression caractères valides (+, %, etc.)
   - Cohérence avec Yup validation
-  - console.debug au lieu de console.warn
+  - logger.debug au lieu de console.warn
   
 ✅ SÉCURITÉ MAINTENUE
   - Yup validation (format, length)
