@@ -1,6 +1,5 @@
-// middleware.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { getSessionCookie } from 'better-auth/cookies';
+// middleware.js
+import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
   const pathname = request.nextUrl.pathname;
@@ -11,18 +10,11 @@ export async function middleware(request) {
     return NextResponse.next();
   }
 
-  // Routes protégées : vérification optimiste du cookie
-  const sessionCookie = getSessionCookie(request, {
-    cookieName: 'session_token',
-    cookiePrefix: 'better-auth',
-  });
+  // Routes protégées : vérifier le cookie de session Better Auth
+  // ⚠️ Better Auth utilise par défaut le nom 'better-auth.session_token'
+  const sessionToken = request.cookies.get('better-auth.session_token');
 
-  // ⚠️ SECURITY WARNING : Cette vérification est OPTIMISTE uniquement
-  // Elle NE valide PAS la session côté serveur
-  // C'est pour rediriger rapidement les utilisateurs non authentifiés
-  // La vraie validation DOIT être faite dans chaque page/route protégée
-
-  if (!sessionCookie) {
+  if (!sessionToken) {
     const url = new URL('/login', request.url);
     url.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(url);

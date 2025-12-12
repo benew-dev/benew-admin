@@ -1,9 +1,10 @@
+// app/login/page.jsx
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from '@/lib/auth-client';
+import { signIn, useSession } from '@/lib/auth-client';
 import '@/ui/styling/login/login.css';
 
 export default function LoginPage() {
@@ -15,6 +16,13 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { data: session } = useSession();
+
+  // ✅ Rediriger si déjà connecté
+  if (session?.user) {
+    router.push('/dashboard');
+    return null;
+  }
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -25,7 +33,6 @@ export default function LoginPage() {
       [name]: newValue,
     }));
 
-    // Clear error when field is modified
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -41,7 +48,7 @@ export default function LoginPage() {
     setErrors({});
 
     try {
-      // Basic validation
+      // Validation
       const newErrors = {};
       if (!formData.email) {
         newErrors.email = 'Email is required';
@@ -56,31 +63,29 @@ export default function LoginPage() {
         return;
       }
 
-      // Better Auth sign in
-      const { data, error } = await signIn.email({
-        email: formData.email,
-        password: formData.password,
-        callbackURL: '/dashboard',
-        // fetchOptions pour vos custom headers si nécessaire
-        fetchOptions: {
+      // ✅ Better Auth sign in sans callbackURL
+      const { data, error } = await signIn.email(
+        {
+          email: formData.email,
+          password: formData.password,
+          // ❌ SUPPRIMER callbackURL - géré manuellement
+        },
+        {
           onRequest(context) {
-            // Ajouter headers personnalisés si besoin
-            // context.request.headers.set('X-Custom-Header', 'value');
+            console.log('Login request sent');
           },
           onSuccess(context) {
-            // Callback succès
-            console.log('Login successful');
+            console.log('Login successful:', context);
           },
           onError(context) {
             console.error('Login failed:', context.error);
           },
         },
-      });
+      );
 
       if (error) {
         console.error('Login error:', error);
 
-        // Better Auth error codes
         if (error.status === 401) {
           setErrors({ submit: 'Invalid email or password' });
         } else if (error.status === 429) {
@@ -88,9 +93,15 @@ export default function LoginPage() {
         } else {
           setErrors({ submit: error.message || 'Login failed' });
         }
-      } else {
-        // Success - redirect to dashboard
-        router.push('/dashboard');
+      } else if (data) {
+        // ✅ SUCCESS - Attendre un peu pour que le cookie soit set
+        console.log('Login data:', data);
+
+        // Attendre 100ms pour que le cookie soit bien enregistré
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Redirection manuelle
+        window.location.href = '/dashboard';
       }
     } catch (error) {
       console.error('Login error:', error);
