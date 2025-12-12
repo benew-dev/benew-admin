@@ -8,14 +8,6 @@ const logger = winston.createLogger({
     winston.format.json(),
   ),
   defaultMeta: { service: 'api-services' },
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple(),
-      ),
-    }),
-  ],
 });
 
 export default logger;
