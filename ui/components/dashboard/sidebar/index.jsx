@@ -57,10 +57,6 @@ const menuItems = [
 ];
 
 function Sidebar() {
-  const logoutHandler = () => {
-    signOut();
-  };
-
   return (
     <div className={styles.container}>
       <div className={styles.user}>
@@ -87,7 +83,11 @@ function Sidebar() {
         ))}
       </ul>
       <form>
-        <button className={styles.logout} type="button" onClick={logoutHandler}>
+        <button
+          className={styles.logout}
+          type="button"
+          onClick={() => signOut({ callbackUrl: '/login' })}
+        >
           <MdLogout />
           Logout
         </button>
