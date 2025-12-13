@@ -8,7 +8,7 @@ const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/'];
 
 // ✅ CORRECTION: Nom du cookie basé sur la config Better Auth
 // Better Auth utilise par défaut "better-auth.session_token" sans prefix
-const SESSION_COOKIE = 'better-auth.session_token';
+const SESSION_COOKIE = '__Secure-better-auth.session_token';
 
 // Logs debug (désactivé en production)
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
