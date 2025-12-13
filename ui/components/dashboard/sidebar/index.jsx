@@ -9,6 +9,7 @@ import {
   MdCreditCard,
 } from 'react-icons/md';
 import Image from 'next/image';
+import { useState } from 'react';
 import MenuLink from './menuLink';
 import styles from './sidebar.module.css';
 import { signOut } from '@/lib/auth-client';
@@ -57,6 +58,33 @@ const menuItems = [
 ];
 
 function Sidebar() {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  /**
+   * 🔥 SOLUTION: Hard redirect après signOut
+   * Inspiré de bs-client-better-auth/components/layouts/Header.jsx
+   */
+  const handleSignOut = async () => {
+    try {
+      setIsLoggingOut(true);
+
+      // 1. Appeler signOut de Better Auth
+      await signOut({
+        callbackUrl: '/login',
+        redirect: false, // ✅ On gère la redirection nous-mêmes
+      });
+
+      // 2. Hard redirect pour bypass le cache Next.js
+      // (même solution que pour le login)
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('[Sidebar] Erreur lors de la déconnexion:', error);
+
+      // En cas d'erreur, forcer quand même la redirection
+      window.location.href = '/login';
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.user}>
@@ -86,10 +114,11 @@ function Sidebar() {
         <button
           className={styles.logout}
           type="button"
-          onClick={() => signOut({ callbackUrl: '/login' })}
+          onClick={handleSignOut}
+          disabled={isLoggingOut}
         >
           <MdLogout />
-          Logout
+          {isLoggingOut ? 'Déconnexion...' : 'Logout'}
         </button>
       </form>
     </div>
