@@ -1,7 +1,7 @@
-// ui/components/dashboard/auth/LoginForm.jsx - IMPROVED VERSION
+// ui/components/dashboard/auth/LoginForm.jsx - CRITICAL SECURITY FIX
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from '@/lib/auth-client';
@@ -10,26 +10,20 @@ import { sanitizeLoginInputs } from '@/utils/sanitizers/sanitizeLoginInputs';
 import * as Sentry from '@sentry/nextjs';
 
 /**
- * LOGIN FORM - Client Component
+ * 🔴 CRITICAL FIX - SECURITY ISSUE RÉSOLU
  *
- * CHANGEMENTS vs ancienne version:
- * - ✅ Utilise useRouter() au lieu de window.location.href
- * - ✅ Délai cookie augmenté (100ms → 300ms)
- * - ✅ Meilleure gestion erreurs Better Auth
- * - ✅ Force refresh après redirect pour sync middleware
+ * PROBLÈME: Credentials apparaissaient dans l'URL
+ * CAUSE: e.preventDefault() manquant ou form sans method="POST"
+ * FIX: e.preventDefault() FORCÉ + method="POST" explicite
  */
 export default function LoginForm({ callbackUrl = '/dashboard' }) {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     remember: false,
   });
   const [errors, setErrors] = useState({});
-  const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(false);
-
-  const loading = isPending || isLoading;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -40,7 +34,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
       [name]: newValue,
     }));
 
-    // Clear field error on change (better UX)
+    // Clear field error on change
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -51,11 +45,13 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
   };
 
   const handleSubmit = async (e) => {
+    // 🔴 CRITICAL: TOUJOURS preventDefault en PREMIER
     e.preventDefault();
+    e.stopPropagation();
+
     setIsLoading(true);
     setErrors({});
 
-    // ✅ Sentry breadcrumb for monitoring
     Sentry.addBreadcrumb({
       category: 'auth',
       message: 'Login attempt started',
@@ -63,30 +59,29 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
     });
 
     try {
-      // 1️⃣ Sanitize inputs (XSS protection)
+      // 1️⃣ Sanitize
       const sanitized = sanitizeLoginInputs(formData);
 
-      // 2️⃣ Client-side validation (Yup - fast feedback)
+      // 2️⃣ Validation Yup
       await loginSchema.validate(sanitized, { abortEarly: false });
 
-      // 3️⃣ Better Auth sign in (automatic server validation + rate limiting)
+      // 3️⃣ Better Auth sign in
       const { data, error } = await signIn.email(
         {
           email: sanitized.email,
           password: sanitized.password,
         },
         {
-          onRequest: (context) => {
+          onRequest: () => {
             Sentry.addBreadcrumb({
               category: 'auth',
-              message: 'Login request sent to Better Auth',
-              data: { email: sanitized.email },
+              message: 'Better Auth request sent',
             });
           },
-          onSuccess: (context) => {
+          onSuccess: () => {
             Sentry.addBreadcrumb({
               category: 'auth',
-              message: 'Better Auth login successful',
+              message: 'Better Auth success',
               level: 'info',
             });
           },
@@ -98,88 +93,68 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         },
       );
 
-      // 4️⃣ Handle Better Auth errors
+      // 4️⃣ Handle errors
       if (error) {
         const errorMessages = {
           400: 'Invalid request. Please check your credentials.',
-          401: 'Invalid email or password. Please try again.',
-          403: 'Your account has been locked. Please contact support.',
-          429: 'Too many login attempts. Please wait 10 seconds and try again.',
-          500: 'Server error. Please try again later.',
+          401: 'Invalid email or password.',
+          403: 'Account locked. Contact support.',
+          429: 'Too many attempts. Wait 10 seconds.',
+          500: 'Server error. Try again later.',
         };
 
         const message =
           errorMessages[error.status] ||
           error.message ||
-          'Login failed. Please try again.';
+          'Login failed. Try again.';
 
         setErrors({ submit: message });
 
-        // ✅ Critical: Monitor rate limit violations (5 users/day = anomalies matter)
         if (error.status === 429) {
           Sentry.captureMessage('Rate limit exceeded on login', {
             level: 'warning',
-            tags: { component: 'login', email: sanitized.email },
+            tags: { component: 'login' },
           });
         }
 
-        // ✅ Log ALL login failures pour admin app (5 users = toutes erreurs importantes)
-        Sentry.captureMessage('Login failed', {
-          level: 'warning',
-          tags: {
-            component: 'login',
-            status: error.status,
-            email: sanitized.email,
-          },
-          extra: {
-            errorMessage: message,
-            callbackUrl,
-          },
+        // Log pour debugging (admin app 5 users)
+        console.error('[LoginForm] Better Auth error:', {
+          status: error.status,
+          message,
         });
 
         setIsLoading(false);
         return;
       }
 
-      // 5️⃣ Success - Handle redirect
+      // 5️⃣ Success - Redirect
       if (data) {
+        console.log('[LoginForm] Login successful, redirecting...');
+
         Sentry.addBreadcrumb({
           category: 'auth',
-          message: 'Login successful, preparing redirect',
+          message: 'Login successful, redirecting',
           level: 'info',
         });
 
-        // ✅ AMÉLIORATION: Délai plus long pour garantir cookie set
-        // Reason: Vercel serverless peut être lent à propager les cookies
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Délai pour cookie propagation (Vercel serverless)
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // ✅ AMÉLIORATION: Utiliser router.push + refresh au lieu de window.location
-        startTransition(() => {
-          // Force refresh pour que middleware détecte nouveau cookie
-          router.refresh();
-          // Navigate vers callback URL
-          router.push(callbackUrl);
-        });
-
-        // ✅ FALLBACK: Si router.push échoue après 2s, forcer window.location
-        setTimeout(() => {
-          if (window.location.pathname === '/login') {
-            console.warn('Router.push failed, using window.location fallback');
-            window.location.href = callbackUrl;
-          }
-        }, 2000);
+        // Forcer full page reload (meilleure compatibilité middleware)
+        window.location.href = callbackUrl;
       }
     } catch (validationError) {
-      // ✅ Handle Yup validation errors
+      // Yup validation errors
       if (validationError.inner) {
         const newErrors = {};
         validationError.inner.forEach((err) => {
           newErrors[err.path] = err.message;
         });
         setErrors(newErrors);
+        console.log('[LoginForm] Validation errors:', newErrors);
       } else {
-        // ✅ Unexpected errors
-        console.error('Unexpected login error:', validationError);
+        // Unexpected errors
+        console.error('[LoginForm] Unexpected error:', validationError);
         Sentry.captureException(validationError, {
           tags: { component: 'login', phase: 'validation' },
         });
@@ -192,7 +167,13 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="form" noValidate>
+    <form
+      onSubmit={handleSubmit}
+      method="POST"
+      action="#"
+      className="form"
+      noValidate
+    >
       {/* Email Field */}
       <div className="form-group">
         <label htmlFor="email">Email</label>
@@ -203,7 +184,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           autoComplete="email"
           onChange={handleChange}
           value={formData.email}
-          disabled={loading}
+          disabled={isLoading}
           aria-invalid={!!errors.email}
           aria-describedby={errors.email ? 'email-error' : undefined}
           placeholder="admin@benew.com"
@@ -225,7 +206,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           autoComplete="current-password"
           onChange={handleChange}
           value={formData.password}
-          disabled={loading}
+          disabled={isLoading}
           aria-invalid={!!errors.password}
           aria-describedby={errors.password ? 'password-error' : undefined}
         />
@@ -236,7 +217,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         )}
       </div>
 
-      {/* Remember Me Checkbox */}
+      {/* Remember Me */}
       <div className="form-group checkbox">
         <label>
           <input
@@ -244,7 +225,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
             name="remember"
             checked={formData.remember}
             onChange={handleChange}
-            disabled={loading}
+            disabled={isLoading}
           />
           Remember me
         </label>
@@ -261,10 +242,10 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
       <button
         type="submit"
         className="submit-button"
-        disabled={loading}
-        aria-busy={loading}
+        disabled={isLoading}
+        aria-busy={isLoading}
       >
-        {loading ? 'Logging in...' : 'Login'}
+        {isLoading ? 'Logging in...' : 'Login'}
       </button>
 
       {/* Footer Links */}
