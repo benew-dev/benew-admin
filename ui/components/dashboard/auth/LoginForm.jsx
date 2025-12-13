@@ -1,7 +1,8 @@
-// app/login/LoginForm.jsx - CLIENT COMPONENT
+// ui/components/dashboard/auth/LoginForm.jsx - IMPROVED VERSION
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from '@/lib/auth-client';
 import { loginSchema } from '@/utils/schemas/authSchema';
@@ -11,14 +12,14 @@ import * as Sentry from '@sentry/nextjs';
 /**
  * LOGIN FORM - Client Component
  *
- * Production-ready features (5 users max/day):
- * - Client-side validation (Yup) + Sanitization for fast feedback
- * - Better Auth integration (automatic server validation)
- * - Rate limiting via Better Auth (3 attempts/10s default)
- * - Sentry monitoring for all attempts (critical for low-traffic admin)
- * - Accessible form with proper error handling
+ * CHANGEMENTS vs ancienne version:
+ * - ✅ Utilise useRouter() au lieu de window.location.href
+ * - ✅ Délai cookie augmenté (100ms → 300ms)
+ * - ✅ Meilleure gestion erreurs Better Auth
+ * - ✅ Force refresh après redirect pour sync middleware
  */
 export default function LoginForm({ callbackUrl = '/dashboard' }) {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -78,19 +79,21 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           onRequest: (context) => {
             Sentry.addBreadcrumb({
               category: 'auth',
-              message: 'Login request sent',
+              message: 'Login request sent to Better Auth',
               data: { email: sanitized.email },
             });
           },
           onSuccess: (context) => {
             Sentry.addBreadcrumb({
               category: 'auth',
-              message: 'Login successful',
+              message: 'Better Auth login successful',
               level: 'info',
             });
           },
           onError: (context) => {
-            console.error('Login failed:', context.error);
+            Sentry.captureException(context.error, {
+              tags: { component: 'login', phase: 'better-auth' },
+            });
           },
         },
       );
@@ -98,6 +101,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
       // 4️⃣ Handle Better Auth errors
       if (error) {
         const errorMessages = {
+          400: 'Invalid request. Please check your credentials.',
           401: 'Invalid email or password. Please try again.',
           403: 'Your account has been locked. Please contact support.',
           429: 'Too many login attempts. Please wait 10 seconds and try again.',
@@ -105,7 +109,9 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         };
 
         const message =
-          errorMessages[error.status] || error.message || 'Login failed';
+          errorMessages[error.status] ||
+          error.message ||
+          'Login failed. Please try again.';
 
         setErrors({ submit: message });
 
@@ -117,25 +123,51 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           });
         }
 
+        // ✅ Log ALL login failures pour admin app (5 users = toutes erreurs importantes)
+        Sentry.captureMessage('Login failed', {
+          level: 'warning',
+          tags: {
+            component: 'login',
+            status: error.status,
+            email: sanitized.email,
+          },
+          extra: {
+            errorMessage: message,
+            callbackUrl,
+          },
+        });
+
         setIsLoading(false);
         return;
       }
 
-      // 5️⃣ Success - Wait for cookie, then redirect
+      // 5️⃣ Success - Handle redirect
       if (data) {
         Sentry.addBreadcrumb({
           category: 'auth',
-          message: 'Login successful, redirecting',
+          message: 'Login successful, preparing redirect',
           level: 'info',
         });
 
-        // ✅ Delay to ensure cookie is set
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // ✅ AMÉLIORATION: Délai plus long pour garantir cookie set
+        // Reason: Vercel serverless peut être lent à propager les cookies
+        await new Promise((resolve) => setTimeout(resolve, 300));
 
-        // ✅ Force full page reload for middleware session pickup
+        // ✅ AMÉLIORATION: Utiliser router.push + refresh au lieu de window.location
         startTransition(() => {
-          window.location.href = callbackUrl;
+          // Force refresh pour que middleware détecte nouveau cookie
+          router.refresh();
+          // Navigate vers callback URL
+          router.push(callbackUrl);
         });
+
+        // ✅ FALLBACK: Si router.push échoue après 2s, forcer window.location
+        setTimeout(() => {
+          if (window.location.pathname === '/login') {
+            console.warn('Router.push failed, using window.location fallback');
+            window.location.href = callbackUrl;
+          }
+        }, 2000);
       }
     } catch (validationError) {
       // ✅ Handle Yup validation errors
@@ -174,6 +206,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           disabled={loading}
           aria-invalid={!!errors.email}
           aria-describedby={errors.email ? 'email-error' : undefined}
+          placeholder="admin@benew.com"
         />
         {errors.email && (
           <div id="email-error" className="error" role="alert">
