@@ -1,7 +1,7 @@
-// ui/components/dashboard/auth/LoginForm.jsx - CRITICAL SECURITY FIX
+// ui/components/dashboard/auth/LoginForm.jsx - FINAL FIX
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from '@/lib/auth-client';
@@ -10,13 +10,22 @@ import { sanitizeLoginInputs } from '@/utils/sanitizers/sanitizeLoginInputs';
 import * as Sentry from '@sentry/nextjs';
 
 /**
- * 🔴 CRITICAL FIX - SECURITY ISSUE RÉSOLU
+ * 🔴 CRITICAL FIX - COOKIE RACE CONDITION
  *
- * PROBLÈME: Credentials apparaissaient dans l'URL
- * CAUSE: e.preventDefault() manquant ou form sans method="POST"
- * FIX: e.preventDefault() FORCÉ + method="POST" explicite
+ * PROBLÈME: window.location.href cause cookie race condition
+ * - Cookie set par Better Auth dans response
+ * - Browser navigate AVANT que cookie soit traité
+ * - Middleware check cookie → PAS ENCORE LÀ → redirect login
+ * - BOUCLE INFINIE !
+ *
+ * SOLUTION: Server-side redirect avec router.refresh()
+ * - Attend que cookie soit traité par browser
+ * - Force server component re-render
+ * - Middleware voit le cookie correctement
  */
 export default function LoginForm({ callbackUrl = '/dashboard' }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -24,6 +33,8 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+
+  const loading = isPending || isLoading;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -34,7 +45,6 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
       [name]: newValue,
     }));
 
-    // Clear field error on change
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
@@ -45,7 +55,6 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
   };
 
   const handleSubmit = async (e) => {
-    // 🔴 CRITICAL: TOUJOURS preventDefault en PREMIER
     e.preventDefault();
     e.stopPropagation();
 
@@ -117,7 +126,6 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           });
         }
 
-        // Log pour debugging (admin app 5 users)
         console.error('[LoginForm] Better Auth error:', {
           status: error.status,
           message,
@@ -127,7 +135,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         return;
       }
 
-      // 5️⃣ Success - Redirect
+      // 5️⃣ Success - Server-side redirect avec transition
       if (data) {
         console.log('[LoginForm] Login successful, redirecting...');
 
@@ -137,14 +145,25 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           level: 'info',
         });
 
-        // Délai pour cookie propagation (Vercel serverless)
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // 🔥 FIX CRITIQUE: Utiliser startTransition + router.refresh
+        // Permet au browser de traiter le cookie AVANT navigation
+        startTransition(() => {
+          // Force re-fetch des Server Components (middleware voit cookie)
+          router.refresh();
 
-        // Forcer full page reload (meilleure compatibilité middleware)
-        window.location.href = callbackUrl;
+          // Navigate vers destination
+          router.push(callbackUrl);
+        });
+
+        // Alternative si transition échoue (très rare)
+        setTimeout(() => {
+          if (window.location.pathname === '/login') {
+            console.warn('[LoginForm] Transition failed, using hard reload');
+            window.location.href = callbackUrl;
+          }
+        }, 3000);
       }
     } catch (validationError) {
-      // Yup validation errors
       if (validationError.inner) {
         const newErrors = {};
         validationError.inner.forEach((err) => {
@@ -153,7 +172,6 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         setErrors(newErrors);
         console.log('[LoginForm] Validation errors:', newErrors);
       } else {
-        // Unexpected errors
         console.error('[LoginForm] Unexpected error:', validationError);
         Sentry.captureException(validationError, {
           tags: { component: 'login', phase: 'validation' },
@@ -184,7 +202,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           autoComplete="email"
           onChange={handleChange}
           value={formData.email}
-          disabled={isLoading}
+          disabled={loading}
           aria-invalid={!!errors.email}
           aria-describedby={errors.email ? 'email-error' : undefined}
           placeholder="admin@benew.com"
@@ -206,7 +224,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           autoComplete="current-password"
           onChange={handleChange}
           value={formData.password}
-          disabled={isLoading}
+          disabled={loading}
           aria-invalid={!!errors.password}
           aria-describedby={errors.password ? 'password-error' : undefined}
         />
@@ -225,7 +243,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
             name="remember"
             checked={formData.remember}
             onChange={handleChange}
-            disabled={isLoading}
+            disabled={loading}
           />
           Remember me
         </label>
@@ -242,10 +260,10 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
       <button
         type="submit"
         className="submit-button"
-        disabled={isLoading}
-        aria-busy={isLoading}
+        disabled={loading}
+        aria-busy={loading}
       >
-        {isLoading ? 'Logging in...' : 'Login'}
+        {loading ? 'Logging in...' : 'Login'}
       </button>
 
       {/* Footer Links */}
