@@ -1,8 +1,7 @@
-// ui/components/dashboard/auth/LoginForm.jsx - FINAL FIX
+// ui/components/dashboard/auth/LoginForm.jsx - SOLUTION AU PROBLÈME DE REDIRECTION
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 import { signIn } from '@/lib/auth-client';
 import { loginSchema } from '@/utils/schemas/authSchema';
@@ -10,22 +9,26 @@ import { sanitizeLoginInputs } from '@/utils/sanitizers/sanitizeLoginInputs';
 import * as Sentry from '@sentry/nextjs';
 
 /**
- * 🔴 CRITICAL FIX - COOKIE RACE CONDITION
+ * 🔥 SOLUTION AU PROBLÈME DE REDIRECTION
  *
- * PROBLÈME: window.location.href cause cookie race condition
- * - Cookie set par Better Auth dans response
- * - Browser navigate AVANT que cookie soit traité
- * - Middleware check cookie → PAS ENCORE LÀ → redirect login
- * - BOUCLE INFINIE !
+ * PROBLÈME IDENTIFIÉ:
+ * - router.push() utilise le cache côté client de Next.js
+ * - Le cache contient la version non-authentifiée de /dashboard
+ * - Même si le cookie est défini, Next.js charge depuis le cache
+ * - Résultat: URL change mais page reste bloquée sur /login
  *
- * SOLUTION: Server-side redirect avec router.refresh()
- * - Attend que cookie soit traité par browser
- * - Force server component re-render
- * - Middleware voit le cookie correctement
+ * SOLUTION:
+ * - Utiliser window.location.href au lieu de router.push
+ * - Force un hard reload (bypass du cache Next.js)
+ * - Le middleware s'exécute à nouveau et voit le nouveau cookie
+ * - Redirection réussie vers /dashboard
+ *
+ * SOURCES:
+ * - https://github.com/vercel/next.js/discussions/51782
+ * - https://www.wisp.blog/blog/best-practices-for-redirecting-users-post-authentication-in-nextjs
+ * - https://github.com/vercel/next.js/discussions/58940
  */
 export default function LoginForm({ callbackUrl = '/dashboard' }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -33,8 +36,6 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-
-  const loading = isPending || isLoading;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -135,33 +136,24 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         return;
       }
 
-      // 5️⃣ Success - Server-side redirect avec transition
+      // 5️⃣ Success - HARD REDIRECT pour éviter problème de cache
       if (data) {
-        console.log('[LoginForm] Login successful, redirecting...');
+        console.log(
+          '[LoginForm] Login successful, redirecting with hard reload...',
+        );
 
         Sentry.addBreadcrumb({
           category: 'auth',
-          message: 'Login successful, redirecting',
+          message: 'Login successful, hard redirecting',
           level: 'info',
         });
 
-        // 🔥 FIX CRITIQUE: Utiliser startTransition + router.refresh
-        // Permet au browser de traiter le cookie AVANT navigation
-        startTransition(() => {
-          // Force re-fetch des Server Components (middleware voit cookie)
-          router.refresh();
+        // 🔥 SOLUTION: Hard redirect au lieu de router.push
+        // Cela force Next.js à bypass le cache et recharger complètement
+        // Le middleware s'exécutera à nouveau et verra le nouveau cookie
+        window.location.href = callbackUrl;
 
-          // Navigate vers destination
-          router.push(callbackUrl);
-        });
-
-        // Alternative si transition échoue (très rare)
-        setTimeout(() => {
-          if (window.location.pathname === '/login') {
-            console.warn('[LoginForm] Transition failed, using hard reload');
-            window.location.href = callbackUrl;
-          }
-        }, 3000);
+        // Note: On ne set pas isLoading à false car la page va recharger
       }
     } catch (validationError) {
       if (validationError.inner) {
@@ -202,7 +194,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           autoComplete="email"
           onChange={handleChange}
           value={formData.email}
-          disabled={loading}
+          disabled={isLoading}
           aria-invalid={!!errors.email}
           aria-describedby={errors.email ? 'email-error' : undefined}
           placeholder="admin@benew.com"
@@ -224,7 +216,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           autoComplete="current-password"
           onChange={handleChange}
           value={formData.password}
-          disabled={loading}
+          disabled={isLoading}
           aria-invalid={!!errors.password}
           aria-describedby={errors.password ? 'password-error' : undefined}
         />
@@ -243,7 +235,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
             name="remember"
             checked={formData.remember}
             onChange={handleChange}
-            disabled={loading}
+            disabled={isLoading}
           />
           Remember me
         </label>
@@ -260,10 +252,10 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
       <button
         type="submit"
         className="submit-button"
-        disabled={loading}
-        aria-busy={loading}
+        disabled={isLoading}
+        aria-busy={isLoading}
       >
-        {loading ? 'Logging in...' : 'Login'}
+        {isLoading ? 'Logging in...' : 'Login'}
       </button>
 
       {/* Footer Links */}
