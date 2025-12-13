@@ -1,82 +1,87 @@
-// middleware.js - PRODUCTION-READY MINIMAL + SENTRY
+// middleware.js - BENEW ADMIN (5 users/day) - INSPIRÉ DE BS-CLIENT-BETTER-AUTH
 import { NextResponse } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 
 // ===== CONFIGURATION =====
 
+// Routes publiques (pas de vérification auth)
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/'];
 
-const SESSION_COOKIE =
-  process.env.NODE_ENV === 'production'
-    ? '__Secure-better-auth.session_token'
-    : 'better-auth.session_token';
+// ✅ CORRECTION: Nom du cookie basé sur la config Better Auth
+// Better Auth utilise par défaut "better-auth.session_token" sans prefix
+const SESSION_COOKIE = 'better-auth.session_token';
+
+// Logs debug (désactivé en production)
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const DEBUG = process.env.NEXT_PUBLIC_DEBUG === 'true';
+
+// Cache pour optimisation (évite de re-calculer les chemins publics)
+const pathCache = new Map();
 
 // ===== MIDDLEWARE =====
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Ignorer assets statiques (performance)
+  // Debug logs (seulement en dev)
+  if (!IS_PRODUCTION && DEBUG) {
+    console.log('[Middleware] Path:', pathname);
+    console.log('[Middleware] Cookies:', request.cookies.getAll());
+  }
+
+  // 1. Ignorer assets statiques (performance)
   if (pathname.startsWith('/_next') || pathname === '/favicon.ico') {
     return NextResponse.next();
   }
 
-  // ✅ Sentry: Tracer les requêtes middleware (breadcrumb)
-  Sentry.addBreadcrumb({
-    category: 'middleware',
-    message: `Middleware check: ${pathname}`,
-    level: 'debug',
-    data: {
-      pathname,
-      method: request.method,
-    },
-  });
+  // 2. Ignorer API Better Auth (éviter boucle infinie)
+  if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next();
+  }
 
-  try {
-    // 1. Routes publiques - pas de vérification
-    if (
-      PUBLIC_PATHS.some((p) =>
-        p === '/' ? pathname === '/' : pathname.startsWith(p),
-      )
-    ) {
+  // 3. Vérification rapide avec cache
+  if (pathCache.has(pathname)) {
+    const cached = pathCache.get(pathname);
+    if (cached === 'public') {
       return NextResponse.next();
     }
+  }
 
-    // 2. Vérifier présence cookie session (optimistic check)
-    // Note: La validation complète se fait côté serveur dans les pages
-    const sessionToken = request.cookies.get(SESSION_COOKIE);
+  // 4. Routes publiques - pas de vérification auth
+  const isPublic = PUBLIC_PATHS.some((publicPath) =>
+    publicPath === '/' ? pathname === '/' : pathname.startsWith(publicPath),
+  );
 
-    if (!sessionToken) {
-      // ✅ Sentry: Logger la redirection (info, pas error)
-      Sentry.addBreadcrumb({
-        category: 'auth',
-        message: 'Unauthenticated access - redirecting to login',
-        level: 'info',
-        data: { pathname },
-      });
+  if (isPublic) {
+    pathCache.set(pathname, 'public');
+    return NextResponse.next();
+  }
 
-      const url = new URL('/login', request.url);
-      url.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(url);
+  // 5. Vérifier présence cookie session (optimistic check)
+  // Note: La validation complète se fait côté serveur dans layout.jsx
+  const sessionCookie = request.cookies.get(SESSION_COOKIE);
+
+  if (!IS_PRODUCTION && DEBUG) {
+    console.log(
+      '[Middleware] Session cookie:',
+      sessionCookie?.value ? 'EXISTS' : 'MISSING',
+    );
+  }
+
+  if (!sessionCookie) {
+    // Pas de cookie - rediriger vers login
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
+
+    if (!IS_PRODUCTION && DEBUG) {
+      console.log('[Middleware] Redirecting to login:', loginUrl.toString());
     }
 
-    // 3. Permettre l'accès
-    return NextResponse.next();
-  } catch (error) {
-    // ✅ Sentry: Capturer les erreurs critiques
-    Sentry.captureException(error, {
-      tags: {
-        component: 'middleware',
-        pathname,
-      },
-      level: 'error',
-    });
-
-    // Fail-open: Rediriger vers login en cas d'erreur
-    const url = new URL('/login', request.url);
-    url.searchParams.set('error', 'middleware_error');
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(loginUrl);
   }
+
+  // 6. Cookie existe - permettre l'accès
+  // La validation complète de la session se fait dans le layout du dashboard
+  return NextResponse.next();
 }
 
 // ===== CONFIGURATION MATCHER =====
@@ -85,11 +90,12 @@ export const config = {
   matcher: [
     /*
      * Match toutes les routes sauf :
+     * - /api/auth/* (routes Better Auth)
      * - _next/static (fichiers statiques)
      * - _next/image (optimisation images)
      * - favicon.ico
      * - fichiers publics (images, fonts)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff|woff2)$).*)',
   ],
 };
