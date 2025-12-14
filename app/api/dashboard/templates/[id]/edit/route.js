@@ -161,6 +161,7 @@ export async function PUT(request, { params }) {
 
     const filteredDataToSanitize = Object.fromEntries(
       Object.entries(dataToSanitize).filter(
+        // eslint-disable-next-line no-unused-vars
         ([_, value]) => value !== undefined,
       ),
     );
@@ -185,6 +186,7 @@ export async function PUT(request, { params }) {
           templateHasWeb: sanitizedTemplateHasWeb,
           templateHasMobile: sanitizedTemplateHasMobile,
           isActive,
+          // eslint-disable-next-line no-unused-vars
         }).filter(([_, value]) => value !== undefined),
       );
 
