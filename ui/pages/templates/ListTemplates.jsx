@@ -4,7 +4,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import '@/styling/dashboard/templates/templates.module.css';
+import styles from '@/ui/styling/dashboard/templates/templates.module.css';
 import {
   trackUI,
   trackNavigation,
@@ -79,9 +79,6 @@ export default function ListTemplates({ initialTemplates }) {
         templateId,
         templateName,
       });
-
-      // Optional: Show success toast
-      // showToast('Template deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
       const errorMsg = 'Network error. Please try again.';
@@ -153,161 +150,173 @@ export default function ListTemplates({ initialTemplates }) {
     [router],
   );
 
+  // ===== EMPTY STATE =====
   if (templates.length === 0) {
     return (
-      <div className="empty-state">
-        <p>No templates found.</p>
-        <button
-          onClick={() => handleNavigate('/dashboard/templates/add', null)}
-          className="btn-primary"
-        >
-          Create First Template
-        </button>
+      <div className={styles.container}>
+        <div className={styles.noTemplates}>
+          <div style={{ textAlign: 'center' }}>
+            <p>No templates found.</p>
+            <button
+              onClick={() => handleNavigate('/dashboard/templates/add', null)}
+              className={styles.addButton}
+              style={{ marginTop: '20px' }}
+            >
+              + Create First Template
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="templates-list">
+    <div className={styles.container}>
       {/* Global Error */}
       {error && (
-        <div className="error-banner" role="alert">
-          {error}
-          <button onClick={() => setError(null)} aria-label="Dismiss error">
+        <div
+          style={{
+            padding: '12px 16px',
+            marginBottom: '20px',
+            backgroundColor: '#fee2e2',
+            color: '#991b1b',
+            borderRadius: '8px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+          role="alert"
+        >
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            aria-label="Dismiss error"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#991b1b',
+              fontSize: '20px',
+              cursor: 'pointer',
+              padding: '0 8px',
+            }}
+          >
             ×
           </button>
         </div>
       )}
 
       {/* Templates Grid */}
-      <div className="templates-grid">
-        {templates.map((template) => (
-          <article
-            key={template.template_id}
-            className="template-card"
-            data-active={template.is_active}
-          >
-            {/* Template Image */}
-            <div className="template-image">
-              {template.template_images?.[0] ? (
-                <Image
-                  src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/c_fill,w_300,h_200/${template.template_images[0]}`}
-                  alt={template.template_name}
-                  width={300}
-                  height={200}
-                  style={{ objectFit: 'cover' }}
-                  priority={false}
-                />
-              ) : (
-                <div className="no-image">No Image</div>
-              )}
+      <div className={styles.bottom}>
+        <div className={styles.grid}>
+          {templates.map((template) => (
+            <article
+              key={template.template_id}
+              className={`${styles.card} ${template.is_active ? styles.activeCard : styles.inactiveCard}`}
+            >
+              {/* Template Image */}
+              <div className={styles.imageContainer}>
+                {template.template_images?.[0] ? (
+                  <Image
+                    src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/c_fill,w_300,h_200/${template.template_images[0]}`}
+                    alt={template.template_name}
+                    width={300}
+                    height={200}
+                    className={styles.templateImage}
+                  />
+                ) : (
+                  <div className={styles.noImage}>No Image</div>
+                )}
 
-              {/* Active Badge */}
-              {template.is_active && (
-                <span className="badge active">Active</span>
-              )}
-            </div>
-
-            {/* Template Info */}
-            <div className="template-info">
-              <h3>{template.template_name}</h3>
-
-              {/* Meta Info */}
-              <div className="template-meta">
-                <span className="platforms">
-                  {template.template_has_web && '🌐 Web'}
-                  {template.template_has_web &&
-                    template.template_has_mobile &&
-                    ' • '}
-                  {template.template_has_mobile && '📱 Mobile'}
-                </span>
-                <span className="images-count">
-                  {template.template_images?.length || 0} image(s)
+                {/* Status Badge */}
+                <span
+                  className={`${styles.statusBadge} ${template.is_active ? styles.activeBadge : styles.inactiveBadge}`}
+                >
+                  {template.is_active ? '● Active' : '● Inactive'}
                 </span>
               </div>
 
-              {/* Sales Info */}
-              {template.sales_count > 0 && (
-                <div className="sales-info">{template.sales_count} sale(s)</div>
-              )}
+              {/* Card Content */}
+              <div className={styles.cardContent}>
+                {/* Template Name & Platforms */}
+                <div className={styles.informations}>
+                  <h3 className={styles.templateName}>
+                    {template.template_name}
+                  </h3>
+                  <div className={styles.platforms}>
+                    {template.template_has_web && '🌐'}
+                    {template.template_has_mobile && '📱'}
+                  </div>
+                </div>
 
-              {/* Actions */}
-              <div className="template-actions">
-                {/* View Details */}
-                <button
-                  onClick={() =>
-                    handleNavigate(
-                      `/dashboard/templates/${template.template_id}`,
-                      template.template_id,
-                    )
-                  }
-                  className="btn-view"
-                  aria-label={`View ${template.template_name}`}
-                >
-                  View
-                </button>
+                {/* Template Stats */}
+                <div className={styles.templateStats}>
+                  <div className={styles.stat}>
+                    <span className={styles.statIcon}>🖼️</span>
+                    <span className={styles.statValue}>
+                      {template.template_images?.length || 0}
+                    </span>
+                    <span className={styles.statLabel}>
+                      image{template.template_images?.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  {template.sales_count > 0 && (
+                    <div className={styles.stat}>
+                      <span className={styles.statIcon}>💰</span>
+                      <span className={styles.statValue}>
+                        {template.sales_count}
+                      </span>
+                      <span className={styles.statLabel}>
+                        sale{template.sales_count !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-                {/* Edit */}
-                <button
-                  onClick={() =>
-                    handleNavigate(
-                      `/dashboard/templates/${template.template_id}/edit`,
-                      template.template_id,
-                    )
-                  }
-                  className="btn-edit"
-                  aria-label={`Edit ${template.template_name}`}
-                >
-                  Edit
-                </button>
+                {/* Actions */}
+                <div className={styles.actions}>
+                  {/* Edit */}
+                  <button
+                    onClick={() =>
+                      handleNavigate(
+                        `/dashboard/templates/${template.template_id}/edit`,
+                        template.template_id,
+                      )
+                    }
+                    className={`${styles.actionButton} ${styles.editButton}`}
+                    aria-label={`Edit ${template.template_name}`}
+                    title="Edit template"
+                  >
+                    ✏️
+                  </button>
 
-                {/* Toggle Active */}
-                <button
-                  onClick={() =>
-                    handleToggleActive(template.template_id, template.is_active)
-                  }
-                  className={`btn-toggle ${template.is_active ? 'active' : ''}`}
-                  aria-label={`${template.is_active ? 'Deactivate' : 'Activate'} ${template.template_name}`}
-                  aria-pressed={template.is_active}
-                >
-                  {template.is_active ? 'Deactivate' : 'Activate'}
-                </button>
-
-                {/* Delete */}
-                <button
-                  onClick={() =>
-                    handleDelete(template.template_id, template.template_name)
-                  }
-                  disabled={
-                    isDeleting === template.template_id || template.is_active
-                  }
-                  className="btn-delete"
-                  aria-label={`Delete ${template.template_name}`}
-                  aria-busy={isDeleting === template.template_id}
-                  title={
-                    template.is_active
-                      ? 'Deactivate template before deleting'
-                      : 'Delete template'
-                  }
-                >
-                  {isDeleting === template.template_id
-                    ? 'Deleting...'
-                    : 'Delete'}
-                </button>
+                  {/* Delete */}
+                  <button
+                    onClick={() =>
+                      handleDelete(template.template_id, template.template_name)
+                    }
+                    disabled={
+                      isDeleting === template.template_id || template.is_active
+                    }
+                    className={`${styles.actionButton} ${styles.deleteButton} ${
+                      (isDeleting === template.template_id ||
+                        template.is_active) &&
+                      styles.disabledButton
+                    }`}
+                    aria-label={`Delete ${template.template_name}`}
+                    aria-busy={isDeleting === template.template_id}
+                    title={
+                      template.is_active
+                        ? 'Deactivate template before deleting'
+                        : 'Delete template'
+                    }
+                  >
+                    {isDeleting === template.template_id ? '⏳' : '🗑️'}
+                  </button>
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      {/* Add New Button */}
-      <div className="list-footer">
-        <button
-          onClick={() => handleNavigate('/dashboard/templates/add', null)}
-          className="btn-primary btn-large"
-        >
-          + Add New Template
-        </button>
+            </article>
+          ))}
+        </div>
       </div>
     </div>
   );
