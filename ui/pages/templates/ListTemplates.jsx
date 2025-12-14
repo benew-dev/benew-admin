@@ -4,6 +4,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import '@/styling/dashboard/templates/templates.module.css';
 import {
   trackUI,
   trackNavigation,
