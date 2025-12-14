@@ -11,9 +11,9 @@ import {
   trackDatabaseError,
 } from '@/utils/monitoring';
 
-export default function ListTemplates({ initialTemplates }) {
+export default function ListTemplates({ data }) {
   const router = useRouter();
-  const [templates, setTemplates] = useState(initialTemplates || []);
+  const [templates, setTemplates] = useState(data || []);
   const [isDeleting, setIsDeleting] = useState(null);
   const [error, setError] = useState(null);
 
