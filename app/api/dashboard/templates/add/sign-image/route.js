@@ -4,7 +4,7 @@ import cloudinary from '@/backend/cloudinary';
 import { getAuthenticatedUser } from '@/lib/auth-utils';
 import { applyRateLimit } from '@/backend/rateLimiter';
 import logger from '@/utils/logger';
-import * as Sentry from '@sentry/nextjs';
+import { trackAuth, trackAPI, trackDatabaseError } from '@/utils/monitoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +26,9 @@ export async function POST(request) {
     const rateLimitResponse = await signatureRateLimit(request);
     if (rateLimitResponse) {
       logger.warn('Cloudinary signature rate limit exceeded', { requestId });
+
+      trackAPI('rate_limit_exceeded', {}, 'warning');
+
       return rateLimitResponse;
     }
 
@@ -34,11 +37,7 @@ export async function POST(request) {
     if (!user) {
       logger.warn('Unauthenticated signature request', { requestId });
 
-      Sentry.addBreadcrumb({
-        category: 'auth',
-        message: 'Unauthenticated Cloudinary signature request',
-        level: 'warning',
-      });
+      trackAuth('unauthenticated_signature_request', {}, 'warning');
 
       return NextResponse.json(
         { error: 'Authentication required' },
@@ -52,6 +51,9 @@ export async function POST(request) {
 
     if (!paramsToSign) {
       logger.warn('Missing paramsToSign', { requestId, userId: user.id });
+
+      trackAPI('missing_params_to_sign', {}, 'warning');
+
       return NextResponse.json(
         { error: 'Invalid request body' },
         { status: 400 },
@@ -72,11 +74,8 @@ export async function POST(request) {
       userId: user.id,
     });
 
-    Sentry.addBreadcrumb({
-      category: 'cloudinary',
-      message: 'Signature generated successfully',
-      level: 'info',
-      data: { userId: user.id },
+    trackAPI('signature_generated_successfully', {
+      userId: user.id,
     });
 
     return NextResponse.json(
@@ -94,12 +93,9 @@ export async function POST(request) {
       requestId,
     });
 
-    Sentry.captureException(error, {
-      tags: {
-        component: 'cloudinary_signature',
-        critical: 'true',
-      },
-      extra: { requestId },
+    trackDatabaseError(error, 'cloudinary_signature', {
+      requestId,
+      critical: 'true',
     });
 
     return NextResponse.json(

@@ -6,7 +6,13 @@ import { applyRateLimit } from '@/backend/rateLimiter';
 import { sanitizeTemplateInputsStrict } from '@/utils/sanitizers/sanitizeTemplateInputs';
 import { templateAddingSchema } from '@/utils/schemas/templateSchema';
 import logger from '@/utils/logger';
-import * as Sentry from '@sentry/nextjs';
+import {
+  trackAPI,
+  trackAuth,
+  trackDatabase,
+  trackDatabaseError,
+  trackValidation,
+} from '@/utils/monitoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,12 +38,7 @@ export async function POST(request) {
 
   logger.info('Add template API called', { requestId });
 
-  Sentry.addBreadcrumb({
-    category: 'api',
-    message: 'Add template process started',
-    level: 'info',
-    data: { requestId },
-  });
+  trackAPI('add_template_started', { requestId });
 
   try {
     const rateLimitResponse = await addTemplateRateLimit(request);
@@ -47,6 +48,8 @@ export async function POST(request) {
       const headers = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Rate limit exceeded', { requestId });
+
+      trackAPI('rate_limit_exceeded', {}, 'warning');
 
       const rateLimitBody = await rateLimitResponse.json();
       return NextResponse.json(rateLimitBody, { status: 429, headers });
@@ -59,6 +62,8 @@ export async function POST(request) {
       const headers = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Unauthenticated add attempt', { requestId });
+
+      trackAuth('unauthenticated_add_attempt', {}, 'warning');
 
       return NextResponse.json(
         {
@@ -82,10 +87,7 @@ export async function POST(request) {
         requestId,
       });
 
-      Sentry.captureException(parseError, {
-        tags: { component: 'add_template', action: 'json_parse' },
-        extra: { requestId },
-      });
+      trackDatabaseError(parseError, 'json_parse', { requestId });
 
       return NextResponse.json(
         { success: false, error: 'Invalid JSON in request body' },
@@ -133,14 +135,13 @@ export async function POST(request) {
         requestId,
       });
 
-      Sentry.addBreadcrumb({
-        category: 'validation',
-        message: 'Template validation failed',
-        level: 'warning',
-        data: {
+      trackValidation(
+        'template_add_validation_failed',
+        {
           errors: validationError.inner?.map((e) => e.path),
         },
-      });
+        'warning',
+      );
 
       const errors = {};
       validationError.inner.forEach((error) => {
@@ -163,6 +164,8 @@ export async function POST(request) {
 
       logger.warn('Missing required fields', { requestId });
 
+      trackValidation('missing_required_fields', {}, 'warning');
+
       return NextResponse.json(
         {
           success: false,
@@ -183,10 +186,7 @@ export async function POST(request) {
         requestId,
       });
 
-      Sentry.captureException(dbError, {
-        tags: { component: 'add_template', action: 'db_connection' },
-        extra: { requestId },
-      });
+      trackDatabaseError(dbError, 'db_connection', { requestId });
 
       return NextResponse.json(
         { success: false, error: 'Database connection failed' },
@@ -227,10 +227,7 @@ export async function POST(request) {
         requestId,
       });
 
-      Sentry.captureException(insertError, {
-        tags: { component: 'add_template', action: 'insertion' },
-        extra: { requestId },
-      });
+      trackDatabaseError(insertError, 'insertion', { requestId });
 
       return NextResponse.json(
         { success: false, error: 'Failed to add template to database' },
@@ -253,15 +250,10 @@ export async function POST(request) {
       requestId,
     });
 
-    Sentry.addBreadcrumb({
-      category: 'database',
-      message: 'Template added successfully',
-      level: 'info',
-      data: {
-        templateId: newTemplateId,
-        templateName: sanitizedTemplateName,
-        userId: user.id,
-      },
+    trackDatabase('template_added_successfully', {
+      templateId: newTemplateId,
+      templateName: sanitizedTemplateName,
+      userId: user.id,
     });
 
     return NextResponse.json(
@@ -287,9 +279,10 @@ export async function POST(request) {
       requestId,
     });
 
-    Sentry.captureException(error, {
-      tags: { component: 'add_template', critical: 'true' },
-      extra: { requestId, responseTimeMs: responseTime },
+    trackDatabaseError(error, 'add_template', {
+      requestId,
+      responseTimeMs: responseTime,
+      critical: 'true',
     });
 
     return NextResponse.json(

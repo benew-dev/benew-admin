@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import '@/ui/styling/register/register.css';
 import RegistrationForm from '@/ui/components/dashboard/auth/RegistrationForm';
+import { trackAuth } from '@/utils/monitoring';
 
 /**
  * REGISTRATION PAGE - Server Component
@@ -27,6 +28,10 @@ export default async function RegisterPage({ searchParams }) {
 
   // ✅ Redirect authenticated users
   if (session?.user) {
+    trackAuth('register_page_already_authenticated', {
+      userId: session.user.id,
+      redirectTo: '/dashboard',
+    });
     redirect('/dashboard');
   }
 
@@ -36,6 +41,8 @@ export default async function RegisterPage({ searchParams }) {
 
   // ✅ OPTIONAL: Uncomment to require invitation token
   if (!invitationToken) {
+    trackAuth('register_page_no_invitation_token', {}, 'warning');
+
     return (
       <div className="container">
         <h1>Admin Registration</h1>
@@ -51,6 +58,12 @@ export default async function RegisterPage({ searchParams }) {
       </div>
     );
   }
+
+  // Track registration page visit
+  trackAuth('register_page_visited', {
+    hasInvitationToken: !!invitationToken,
+    hasError: !!errorParam,
+  });
 
   return (
     <div className="container">

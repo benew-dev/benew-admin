@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import AddTemplateForm from '@/ui/pages/templates/AddTemplateForm';
 import logger from '@/utils/logger';
-import * as Sentry from '@sentry/nextjs';
+import { trackAuth, trackDatabaseError } from '@/utils/monitoring';
 
 // ===== CONFIGURATION =====
 export const dynamic = 'force-dynamic';
@@ -29,11 +29,13 @@ async function checkAuth() {
     if (!session?.user) {
       logger.warn('Unauthenticated access to add template page');
 
-      Sentry.addBreadcrumb({
-        category: 'auth',
-        message: 'Unauthenticated access to add template',
-        level: 'warning',
-      });
+      trackAuth(
+        'unauthenticated_access',
+        {
+          page: 'add_template',
+        },
+        'warning',
+      );
 
       return null;
     }
@@ -42,9 +44,7 @@ async function checkAuth() {
   } catch (error) {
     logger.error('Auth check failed', { error: error.message });
 
-    Sentry.captureException(error, {
-      tags: { component: 'add_template_page', action: 'auth_check' },
-    });
+    trackDatabaseError(error, 'auth_check');
 
     return null;
   }
@@ -75,8 +75,8 @@ export default async function AddTemplatePage() {
 
     logger.error('Add template page error', { error: error.message });
 
-    Sentry.captureException(error, {
-      tags: { component: 'add_template_page', critical: 'true' },
+    trackDatabaseError(error, 'page_render', {
+      critical: 'true',
     });
 
     // Fallback: rediriger vers templates list

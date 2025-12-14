@@ -6,7 +6,12 @@ import { getClient } from '@/backend/dbConnect';
 import EditTemplate from '@/ui/pages/templates/EditTemplate';
 import { templateIdSchema, cleanUUID } from '@/utils/schemas/templateSchema';
 import logger from '@/utils/logger';
-import * as Sentry from '@sentry/nextjs';
+import {
+  trackAuth,
+  trackDatabase,
+  trackDatabaseError,
+  trackValidation,
+} from '@/utils/monitoring';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -26,11 +31,13 @@ async function checkAuth() {
     if (!session?.user) {
       logger.warn('Unauthenticated access to edit template page');
 
-      Sentry.addBreadcrumb({
-        category: 'auth',
-        message: 'Unauthenticated access to edit template',
-        level: 'warning',
-      });
+      trackAuth(
+        'unauthenticated_access',
+        {
+          page: 'edit_template',
+        },
+        'warning',
+      );
 
       return null;
     }
@@ -39,9 +46,7 @@ async function checkAuth() {
   } catch (error) {
     logger.error('Auth check failed', { error: error.message });
 
-    Sentry.captureException(error, {
-      tags: { component: 'edit_template_page', action: 'auth_check' },
-    });
+    trackDatabaseError(error, 'auth_check');
 
     return null;
   }
@@ -57,11 +62,9 @@ async function getTemplateFromDatabase(templateId) {
     templateId,
   });
 
-  Sentry.addBreadcrumb({
-    category: 'database',
-    message: 'Get template by ID started',
-    level: 'info',
-    data: { requestId, templateId },
+  trackDatabase('template_fetch_started', {
+    requestId,
+    templateId,
   });
 
   try {
@@ -77,12 +80,13 @@ async function getTemplateFromDatabase(templateId) {
         requestId,
       });
 
-      Sentry.addBreadcrumb({
-        category: 'validation',
-        message: 'Template ID validation failed',
-        level: 'warning',
-        data: { providedId: templateId },
-      });
+      trackValidation(
+        'template_id_validation_failed',
+        {
+          providedId: templateId,
+        },
+        'warning',
+      );
 
       return null;
     }
@@ -105,9 +109,9 @@ async function getTemplateFromDatabase(templateId) {
         templateId: cleanedTemplateId,
       });
 
-      Sentry.captureException(dbConnectionError, {
-        tags: { component: 'edit_template_page', action: 'db_connection' },
-        extra: { requestId, templateId: cleanedTemplateId },
+      trackDatabaseError(dbConnectionError, 'db_connection', {
+        requestId,
+        templateId: cleanedTemplateId,
       });
 
       return null;
@@ -138,9 +142,9 @@ async function getTemplateFromDatabase(templateId) {
         requestId,
       });
 
-      Sentry.captureException(queryError, {
-        tags: { component: 'edit_template_page', action: 'query_failed' },
-        extra: { requestId, templateId: cleanedTemplateId },
+      trackDatabaseError(queryError, 'query_failed', {
+        requestId,
+        templateId: cleanedTemplateId,
       });
 
       await client.cleanup();
@@ -153,12 +157,13 @@ async function getTemplateFromDatabase(templateId) {
         templateId: cleanedTemplateId,
       });
 
-      Sentry.addBreadcrumb({
-        category: 'database',
-        message: 'Template not found',
-        level: 'warning',
-        data: { templateId: cleanedTemplateId },
-      });
+      trackDatabase(
+        'template_not_found',
+        {
+          templateId: cleanedTemplateId,
+        },
+        'warning',
+      );
 
       await client.cleanup();
       return null;
@@ -186,15 +191,10 @@ async function getTemplateFromDatabase(templateId) {
       requestId,
     });
 
-    Sentry.addBreadcrumb({
-      category: 'database',
-      message: 'Template fetch completed successfully',
-      level: 'info',
-      data: {
-        templateId: cleanedTemplateId,
-        templateName: sanitizedTemplate.template_name,
-        responseTimeMs: responseTime,
-      },
+    trackDatabase('template_fetch_completed', {
+      templateId: cleanedTemplateId,
+      templateName: sanitizedTemplate.template_name,
+      responseTimeMs: responseTime,
     });
 
     await client.cleanup();
@@ -210,9 +210,11 @@ async function getTemplateFromDatabase(templateId) {
       templateId,
     });
 
-    Sentry.captureException(error, {
-      tags: { component: 'edit_template_page', critical: 'true' },
-      extra: { requestId, templateId, responseTimeMs: responseTime },
+    trackDatabaseError(error, 'template_fetch', {
+      requestId,
+      templateId,
+      responseTimeMs: responseTime,
+      critical: 'true',
     });
 
     if (client) await client.cleanup();
@@ -254,8 +256,8 @@ export default async function EditTemplatePage({ params }) {
 
     logger.error('Template edit page error', { error: error.message });
 
-    Sentry.captureException(error, {
-      tags: { component: 'edit_template_page', critical: 'true' },
+    trackDatabaseError(error, 'page_render', {
+      critical: 'true',
     });
 
     notFound();

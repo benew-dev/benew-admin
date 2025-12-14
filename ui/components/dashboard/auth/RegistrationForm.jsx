@@ -1,4 +1,4 @@
-// app/register/RegistrationForm.jsx - CLIENT COMPONENT
+// ui/components/dashboard/auth/RegistrationForm.jsx - CLIENT COMPONENT
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { signUp } from '@/lib/auth-client';
 import { registrationSchema } from '@/utils/schemas/authSchema';
 import { sanitizeRegistrationInputsStrict } from '@/utils/sanitizers/sanitizeRegistrationInputs';
-import * as Sentry from '@sentry/nextjs';
+import { trackAuth, trackAuthError } from '@/utils/monitoring';
 
 /**
  * REGISTRATION FORM - Client Component
@@ -81,12 +81,7 @@ export default function RegistrationForm({ invitationToken }) {
     setIsLoading(true);
     setErrors({});
 
-    // ✅ Sentry breadcrumb
-    Sentry.addBreadcrumb({
-      category: 'auth',
-      message: 'Registration attempt started',
-      level: 'info',
-    });
+    trackAuth('registration_attempt_started');
 
     try {
       // 1️⃣ Strict sanitization (zero tolerance for malicious input)
@@ -100,13 +95,13 @@ export default function RegistrationForm({ invitationToken }) {
       const allowedDomains = ['benew.com', 'admin.benew.com'];
 
       // ✅ Uncomment to enforce company email only:
-      if (!allowedDomains.includes(emailDomain)) {
-        setErrors({
-          email: 'Please use your company email address (@benew-dj.com)',
-        });
-        setIsLoading(false);
-        return;
-      }
+      // if (!allowedDomains.includes(emailDomain)) {
+      //   setErrors({
+      //     email: 'Please use your company email address (@benew.com)',
+      //   });
+      //   setIsLoading(false);
+      //   return;
+      // }
 
       // 4️⃣ Better Auth sign up (automatic server validation + rate limiting)
       const { data, error } = await signUp.email(
@@ -119,18 +114,12 @@ export default function RegistrationForm({ invitationToken }) {
         },
         {
           onRequest: (context) => {
-            Sentry.addBreadcrumb({
-              category: 'auth',
-              message: 'Registration request sent',
-              data: { email: sanitized.email },
+            trackAuth('registration_request_sent', {
+              email: sanitized.email,
             });
           },
           onSuccess: (context) => {
-            Sentry.addBreadcrumb({
-              category: 'auth',
-              message: 'Registration successful',
-              level: 'info',
-            });
+            trackAuth('registration_successful');
           },
           onError: (context) => {
             console.error('Registration failed:', context.error);
@@ -159,14 +148,16 @@ export default function RegistrationForm({ invitationToken }) {
 
         // ✅ Monitor critical events (5 users = every anomaly matters)
         if (error.status === 429) {
-          Sentry.captureMessage('Rate limit exceeded on registration', {
-            level: 'warning',
-            tags: { component: 'register', email: sanitized.email },
-          });
+          trackAuth(
+            'rate_limit_exceeded',
+            {
+              email: sanitized.email,
+            },
+            'warning',
+          );
         } else if (error.status === 409) {
-          Sentry.captureMessage('Duplicate registration attempt', {
-            level: 'info',
-            tags: { component: 'register', email: sanitized.email },
+          trackAuth('duplicate_registration_attempt', {
+            email: sanitized.email,
           });
         }
 
@@ -176,11 +167,7 @@ export default function RegistrationForm({ invitationToken }) {
 
       // 6️⃣ Success - Redirect to login with success message
       if (data) {
-        Sentry.addBreadcrumb({
-          category: 'auth',
-          message: 'Registration successful, redirecting',
-          level: 'info',
-        });
+        trackAuth('registration_successful_redirecting');
 
         startTransition(() => {
           router.push('/login?registered=true');
@@ -197,9 +184,7 @@ export default function RegistrationForm({ invitationToken }) {
       } else {
         // ✅ Unexpected errors
         console.error('Unexpected registration error:', validationError);
-        Sentry.captureException(validationError, {
-          tags: { component: 'register', phase: 'validation' },
-        });
+        trackAuthError(validationError, 'validation');
         setErrors({
           submit: 'An unexpected error occurred. Please try again.',
         });

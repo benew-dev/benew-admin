@@ -1,84 +1,266 @@
+// ui/pages/templates/EditTemplate.jsx - CLIENT COMPONENT
 'use client';
-import { useState } from 'react';
+
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CldUploadWidget, CldImage } from 'next-cloudinary';
-import * as Sentry from '@sentry/nextjs';
-import { templateUpdateSchema } from '@/utils/schemas/templateSchema';
-import styles from '@/ui/styling/dashboard/templates/editTemplate.module.css';
+import Image from 'next/image';
+import DOMPurify from 'isomorphic-dompurify';
+import {
+  trackUI,
+  trackUpload,
+  trackUploadError,
+  trackForm,
+} from '@/utils/monitoring';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILES = 5;
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 export default function EditTemplate({ template }) {
-  const [templateName, setTemplateName] = useState(template.template_name);
-  const [hasWeb, setHasWeb] = useState(template.template_has_web);
-  const [hasMobile, setHasMobile] = useState(template.template_has_mobile);
-  const [isActive, setIsActive] = useState(template.is_active);
-  const [imageIds, setImageIds] = useState(template.template_images || []);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [validationErrors, setValidationErrors] = useState({});
   const router = useRouter();
+  const [formData, setFormData] = useState({
+    templateName: template.template_name || '',
+    templateHasWeb: template.template_has_web ?? true,
+    templateHasMobile: template.template_has_mobile ?? false,
+    isActive: template.is_active ?? false,
+  });
+  const [existingImages, setExistingImages] = useState(
+    template.template_images || [],
+  );
+  const [newFiles, setNewFiles] = useState([]);
+  const [newPreviews, setNewPreviews] = useState([]);
+  const [newImageIds, setNewImageIds] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleUploadSuccess = (result) => {
-    const uploadInfo = result.info;
-    setImageIds((prev) => [...prev, uploadInfo.public_id]);
-    setSuccess('Image added!');
-    setTimeout(() => setSuccess(''), 3000);
-    if (validationErrors.templateImageIds) {
-      setValidationErrors((prev) => ({ ...prev, templateImageIds: '' }));
+  // Track component mount
+  useEffect(() => {
+    trackUI('edit_template_form_mounted', {
+      templateId: template.template_id,
+    });
+  }, [template.template_id]);
+
+  // ===== FILE VALIDATION =====
+  const validateFile = useCallback((file) => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return `${file.name}: Invalid file type. Only JPEG, PNG, and WebP allowed.`;
     }
-    Sentry.addBreadcrumb({
-      category: 'upload',
-      message: 'Image added',
-      level: 'info',
-      data: { publicId: uploadInfo.public_id },
-    });
-  };
-
-  const handleUploadError = (error) => {
-    setError('Failed to upload image.');
-    console.error('Upload error:', error);
-    Sentry.captureException(error, {
-      tags: { component: 'edit_template_form', action: 'image_upload' },
-    });
-  };
-
-  const handleRemoveImage = (indexToRemove) => {
-    setImageIds((prev) => prev.filter((_, index) => index !== indexToRemove));
-  };
-
-  const clearFieldError = (fieldName) => {
-    if (validationErrors[fieldName]) {
-      setValidationErrors((prev) => ({ ...prev, [fieldName]: '' }));
+    if (file.size > MAX_FILE_SIZE) {
+      return `${file.name}: File too large. Max size is 5MB.`;
     }
-  };
+    return null;
+  }, []);
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+  // ===== FILE SELECTION =====
+  const handleFileSelect = useCallback(
+    (e) => {
+      const files = Array.from(e.target.files || []);
+      const totalImages =
+        existingImages.length + newFiles.length + files.length;
+
+      trackUI('file_selection_started', {
+        filesCount: files.length,
+        currentTotal: existingImages.length + newFiles.length,
+      });
+
+      if (totalImages > MAX_FILES) {
+        setErrors((prev) => ({
+          ...prev,
+          files: `Maximum ${MAX_FILES} images allowed. You currently have ${existingImages.length + newFiles.length}.`,
+        }));
+        trackUI(
+          'file_selection_limit_exceeded',
+          {
+            attempted: files.length,
+            currentTotal: existingImages.length + newFiles.length,
+          },
+          'warning',
+        );
+        return;
+      }
+
+      const validationErrors = [];
+      const validFiles = [];
+
+      files.forEach((file) => {
+        const error = validateFile(file);
+        if (error) {
+          validationErrors.push(error);
+        } else {
+          validFiles.push(file);
+        }
+      });
+
+      if (validationErrors.length > 0) {
+        setErrors((prev) => ({
+          ...prev,
+          files: validationErrors.join(' | '),
+        }));
+        trackUI(
+          'file_validation_failed',
+          {
+            errorsCount: validationErrors.length,
+          },
+          'warning',
+        );
+        return;
+      }
+
+      const newPreviewsArray = validFiles.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+      }));
+
+      setNewFiles((prev) => [...prev, ...validFiles]);
+      setNewPreviews((prev) => [...prev, ...newPreviewsArray]);
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.files;
+        return newErrors;
+      });
+
+      trackUI('files_selected_successfully', {
+        filesCount: validFiles.length,
+      });
+
+      e.target.value = '';
+    },
+    [existingImages.length, newFiles.length, validateFile],
+  );
+
+  // ===== REMOVE EXISTING IMAGE =====
+  const handleRemoveExistingImage = useCallback((index) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+    trackUI('existing_image_removed', { index });
+  }, []);
+
+  // ===== REMOVE NEW IMAGE =====
+  const handleRemoveNewImage = useCallback((index) => {
+    setNewPreviews((prev) => {
+      URL.revokeObjectURL(prev[index].url);
+      return prev.filter((_, i) => i !== index);
     });
-  };
+    setNewFiles((prev) => prev.filter((_, i) => i !== index));
+    setNewImageIds((prev) => prev.filter((_, i) => i !== index));
+    trackUI('new_image_removed', { index });
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setValidationErrors({});
-
-    const formData = {
-      templateName,
-      templateImageIds: imageIds,
-      templateHasWeb: hasWeb,
-      templateHasMobile: hasMobile,
-      isActive: isActive,
-    };
+  // ===== UPLOAD TO CLOUDINARY =====
+  const uploadToCloudinary = useCallback(async (file) => {
+    trackUpload('cloudinary_upload_started', {
+      fileName: file.name,
+      fileSize: file.size,
+    });
 
     try {
-      await templateUpdateSchema.validate(formData, { abortEarly: false });
-      setIsLoading(true);
+      const signatureResponse = await fetch(
+        '/api/dashboard/templates/add/sign-image',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paramsToSign: {
+              timestamp: Math.round(Date.now() / 1000),
+              folder: 'templates',
+            },
+          }),
+        },
+      );
+
+      if (!signatureResponse.ok) {
+        throw new Error('Failed to get upload signature');
+      }
+
+      const { signature } = await signatureResponse.json();
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY);
+      formData.append('signature', signature);
+      formData.append('timestamp', Math.round(Date.now() / 1000).toString());
+      formData.append('folder', 'templates');
+
+      const uploadResponse = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+      );
+
+      if (!uploadResponse.ok) {
+        throw new Error('Cloudinary upload failed');
+      }
+
+      const result = await uploadResponse.json();
+
+      trackUpload('cloudinary_upload_successful', {
+        publicId: result.public_id,
+      });
+
+      return result.public_id;
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      trackUploadError(error, 'cloudinary_upload', {
+        fileName: file.name,
+      });
+      throw error;
+    }
+  }, []);
+
+  // ===== UPLOAD NEW IMAGES =====
+  const handleUploadNewImages = useCallback(async () => {
+    if (newFiles.length === 0) return true;
+
+    setIsUploading(true);
+
+    trackUpload('batch_upload_started', {
+      filesCount: newFiles.length,
+    });
+
+    try {
+      const uploadPromises = newFiles.map((file) => uploadToCloudinary(file));
+      const imageIds = await Promise.all(uploadPromises);
+      setNewImageIds(imageIds);
+
+      trackUpload('batch_upload_successful', {
+        filesCount: imageIds.length,
+      });
+
+      return true;
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        files: 'Failed to upload new images. Please try again.',
+      }));
+      trackUploadError(error, 'batch_upload');
+      return false;
+    } finally {
+      setIsUploading(false);
+    }
+  }, [newFiles, uploadToCloudinary]);
+
+  // ===== FORM SUBMISSION =====
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    trackForm('edit_template_submit_started', {
+      templateId: template.template_id,
+    });
+
+    // Upload new images if any
+    if (newFiles.length > 0 && newImageIds.length === 0) {
+      const uploadSuccess = await handleUploadNewImages();
+      if (!uploadSuccess) return;
+    }
+
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const sanitizedName = DOMPurify.sanitize(formData.templateName.trim());
+      const allImageIds = [...existingImages, ...newImageIds];
 
       const response = await fetch(
         `/api/dashboard/templates/${template.template_id}/edit`,
@@ -86,238 +268,255 @@ export default function EditTemplate({ template }) {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            templateName,
-            templateImageIds: imageIds,
-            templateHasWeb: hasWeb,
-            templateHasMobile: hasMobile,
-            isActive: isActive,
-            oldImageIds: template.template_images,
+            templateName: sanitizedName,
+            templateImageIds: allImageIds,
+            templateHasWeb: formData.templateHasWeb,
+            templateHasMobile: formData.templateHasMobile,
+            isActive: formData.isActive,
+            oldImageIds: template.template_images || [],
           }),
         },
       );
 
-      const result = await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        if (result.errors && typeof result.errors === 'object') {
-          setValidationErrors(result.errors);
-          setError('Please correct the errors below');
-          return;
+        if (data.errors) {
+          setErrors(data.errors);
+          trackForm(
+            'edit_template_validation_failed',
+            {
+              templateId: template.template_id,
+              errors: Object.keys(data.errors),
+            },
+            'warning',
+          );
+        } else {
+          setErrors({ submit: data.error || 'Failed to update template' });
+          trackForm(
+            'edit_template_failed',
+            {
+              templateId: template.template_id,
+              status: response.status,
+            },
+            'error',
+          );
         }
-        throw new Error(result.message || 'Failed to update template');
+        setIsSubmitting(false);
+        return;
       }
 
-      setSuccess('Template updated!');
-      Sentry.addBreadcrumb({
-        category: 'form',
-        message: 'Template updated',
-        level: 'info',
-        data: { templateId: template.template_id },
+      trackForm('edit_template_successful', {
+        templateId: template.template_id,
       });
 
-      setTimeout(() => {
-        router.push('/dashboard/templates');
-        router.refresh();
-      }, 1500);
-    } catch (validationError) {
-      if (validationError.name === 'ValidationError') {
-        const newErrors = {};
-        validationError.inner.forEach((error) => {
-          newErrors[error.path] = error.message;
-        });
-        setValidationErrors(newErrors);
-        setError('Please correct the errors below');
-      } else {
-        setError(validationError.message || 'An error occurred');
-        Sentry.captureException(validationError, {
-          tags: { component: 'edit_template_form', action: 'submit' },
-        });
-      }
-    } finally {
-      setIsLoading(false);
+      // Cleanup previews
+      newPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+
+      // Redirect
+      router.push('/dashboard/templates?edited=true');
+    } catch (error) {
+      console.error('Submit error:', error);
+      trackUploadError(error, 'template_update');
+      setErrors({ submit: 'An unexpected error occurred' });
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Edit Template</h1>
+  // ===== INPUT CHANGE =====
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
 
-      <div className={styles.templateInfo}>
-        <h3 className={styles.infoTitle}>Template Information</h3>
-        <div className={styles.infoGrid}>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Template ID:</span>
-            <span className={styles.infoValue}>{template.template_id}</span>
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const isLoading = isUploading || isSubmitting;
+  const totalImages = existingImages.length + newFiles.length;
+
+  return (
+    <form onSubmit={handleSubmit} className="template-form">
+      {/* Template Name */}
+      <div className="form-group">
+        <label htmlFor="templateName">Template Name *</label>
+        <input
+          id="templateName"
+          name="templateName"
+          type="text"
+          value={formData.templateName}
+          onChange={handleInputChange}
+          disabled={isLoading}
+          aria-invalid={!!errors.templateName}
+          aria-describedby={
+            errors.templateName ? 'templateName-error' : undefined
+          }
+        />
+        {errors.templateName && (
+          <div id="templateName-error" className="error" role="alert">
+            {errors.templateName}
           </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Sales Count:</span>
-            <span className={styles.salesCount}>{template.sales_count}</span>
+        )}
+      </div>
+
+      {/* Existing Images */}
+      {existingImages.length > 0 && (
+        <div className="form-group">
+          <label>Current Images</label>
+          <div className="previews">
+            {existingImages.map((imageId, index) => (
+              <div key={imageId} className="preview-item">
+                <Image
+                  src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${imageId}`}
+                  alt={`Existing ${index + 1}`}
+                  width={150}
+                  height={150}
+                  style={{ objectFit: 'cover' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveExistingImage(index)}
+                  disabled={isLoading}
+                  className="remove-btn"
+                  aria-label={`Remove existing image ${index + 1}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Created:</span>
-            <span className={styles.infoValue}>
-              {formatDate(template.template_added)}
-            </span>
+        </div>
+      )}
+
+      {/* Add New Images */}
+      <div className="form-group">
+        <label htmlFor="images">
+          Add New Images (Max {MAX_FILES} total, currently {totalImages})
+        </label>
+        <input
+          id="images"
+          type="file"
+          multiple
+          accept={ALLOWED_TYPES.join(',')}
+          onChange={handleFileSelect}
+          disabled={isLoading || totalImages >= MAX_FILES}
+          aria-describedby={errors.files ? 'files-error' : undefined}
+        />
+        {errors.files && (
+          <div id="files-error" className="error" role="alert">
+            {errors.files}
           </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoLabel}>Last Updated:</span>
-            <span className={styles.infoValue}>
-              {formatDate(template.updated_at)}
-            </span>
+        )}
+      </div>
+
+      {/* New Image Previews */}
+      {newPreviews.length > 0 && (
+        <div className="form-group">
+          <label>New Images to Upload</label>
+          <div className="previews">
+            {newPreviews.map((preview, index) => (
+              <div key={index} className="preview-item">
+                <Image
+                  src={preview.url}
+                  alt={`New preview ${index + 1}`}
+                  width={150}
+                  height={150}
+                  style={{ objectFit: 'cover' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveNewImage(index)}
+                  disabled={isLoading}
+                  className="remove-btn"
+                  aria-label={`Remove new image ${index + 1}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
+        </div>
+      )}
+
+      {/* Platform Checkboxes */}
+      <div className="form-group">
+        <label>Platforms</label>
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              name="templateHasWeb"
+              checked={formData.templateHasWeb}
+              onChange={handleInputChange}
+              disabled={isLoading}
+            />
+            Web
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              name="templateHasMobile"
+              checked={formData.templateHasMobile}
+              onChange={handleInputChange}
+              disabled={isLoading}
+            />
+            Mobile
+          </label>
         </div>
       </div>
 
-      <form className={styles.form} onSubmit={handleSubmit}>
-        {error && <div className={styles.error}>{error}</div>}
-        {success && <div className={styles.success}>{success}</div>}
-
-        <div className={styles.formGroup}>
-          <label htmlFor="templateName">Template Name</label>
+      {/* Active Status */}
+      <div className="form-group">
+        <label>
           <input
-            type="text"
-            id="templateName"
-            value={templateName}
-            onChange={(e) => {
-              setTemplateName(e.target.value);
-              clearFieldError('templateName');
-            }}
-            className={`${styles.input} ${validationErrors.templateName ? styles.inputError : ''}`}
-            required
+            type="checkbox"
+            name="isActive"
+            checked={formData.isActive}
+            onChange={handleInputChange}
+            disabled={isLoading}
           />
-          {validationErrors.templateName && (
-            <div className={styles.fieldError}>
-              {validationErrors.templateName}
-            </div>
-          )}
+          Active Template
+        </label>
+      </div>
+
+      {/* Submit Error */}
+      {errors.submit && (
+        <div className="error submit-error" role="alert">
+          {errors.submit}
         </div>
+      )}
 
-        <div className={styles.statusSection}>
-          <div className={styles.checkboxGroup}>
-            <div className={styles.checkbox}>
-              <input
-                type="checkbox"
-                id="hasWeb"
-                checked={hasWeb}
-                onChange={(e) => {
-                  setHasWeb(e.target.checked);
-                  clearFieldError('templateHasWeb');
-                  clearFieldError('templateHasMobile');
-                }}
-              />
-              <label htmlFor="hasWeb">Web</label>
-            </div>
-            <div className={styles.checkbox}>
-              <input
-                type="checkbox"
-                id="hasMobile"
-                checked={hasMobile}
-                onChange={(e) => {
-                  setHasMobile(e.target.checked);
-                  clearFieldError('templateHasWeb');
-                  clearFieldError('templateHasMobile');
-                }}
-              />
-              <label htmlFor="hasMobile">Mobile</label>
-            </div>
-            <div className={`${styles.checkbox} ${styles.statusCheckbox}`}>
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={isActive}
-                onChange={(e) => {
-                  setIsActive(e.target.checked);
-                  clearFieldError('isActive');
-                }}
-                className={styles.statusInput}
-              />
-              <label
-                htmlFor="isActive"
-                className={`${styles.statusLabel} ${isActive ? styles.activeLabel : styles.inactiveLabel}`}
-              >
-                <span
-                  className={`${styles.statusIndicator} ${isActive ? styles.activeIndicator : styles.inactiveIndicator}`}
-                ></span>
-                {isActive ? 'Active' : 'Inactive'}
-              </label>
-            </div>
-          </div>
-          {(validationErrors.templateHasWeb ||
-            validationErrors.templateHasMobile) && (
-            <div className={styles.fieldError}>
-              Template must be available for at least one platform
-            </div>
-          )}
-          {validationErrors.isActive && (
-            <div className={styles.fieldError}>{validationErrors.isActive}</div>
-          )}
-        </div>
-
-        <div className={styles.imageUpload}>
-          <CldUploadWidget
-            options={{
-              sources: ['local', 'url', 'camera'],
-              multiple: false,
-              folder: 'templates',
-              clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
-              maxImageFileSize: 5000000,
-            }}
-            signatureEndpoint="/api/dashboard/templates/add/sign-image"
-            onSuccess={handleUploadSuccess}
-            onError={handleUploadError}
-          >
-            {({ open }) => (
-              <button
-                type="button"
-                className={`${styles.uploadButton} ${validationErrors.templateImageIds ? styles.uploadButtonError : ''}`}
-                onClick={() => open()}
-                disabled={imageIds.length >= 10}
-              >
-                Add Image ({imageIds.length}/10)
-              </button>
-            )}
-          </CldUploadWidget>
-
-          {validationErrors.templateImageIds && (
-            <div className={styles.fieldError}>
-              {validationErrors.templateImageIds}
-            </div>
-          )}
-
-          {imageIds.length > 0 && (
-            <div className={styles.imagesGrid}>
-              {imageIds.map((imageId, index) => (
-                <div key={index} className={styles.imagePreview}>
-                  <CldImage
-                    width="200"
-                    height="130"
-                    src={imageId}
-                    alt={`Image ${index + 1}`}
-                    crop="fill"
-                    gravity="auto"
-                  />
-                  <button
-                    type="button"
-                    className={styles.removeImageButton}
-                    onClick={() => handleRemoveImage(index)}
-                    aria-label="Remove"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
+      {/* Action Buttons */}
+      <div className="form-actions">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          disabled={isLoading}
+          className="btn-secondary"
+        >
+          Cancel
+        </button>
         <button
           type="submit"
-          className={styles.submitButton}
-          disabled={isLoading}
+          disabled={isLoading || totalImages === 0}
+          className="btn-primary"
+          aria-busy={isLoading}
         >
-          {isLoading ? 'Updating...' : 'Update Template'}
+          {isUploading
+            ? 'Uploading...'
+            : isSubmitting
+              ? 'Saving...'
+              : 'Save Changes'}
         </button>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }

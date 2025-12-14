@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { signIn } from '@/lib/auth-client';
 import { loginSchema } from '@/utils/schemas/authSchema';
 import { sanitizeLoginInputs } from '@/utils/sanitizers/sanitizeLoginInputs';
-import * as Sentry from '@sentry/nextjs';
+import { trackAuth, trackAuthError } from '@/utils/monitoring';
 
 /**
  * 🔥 SOLUTION AU PROBLÈME DE REDIRECTION
@@ -62,11 +62,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
     setIsLoading(true);
     setErrors({});
 
-    Sentry.addBreadcrumb({
-      category: 'auth',
-      message: 'Login attempt started',
-      level: 'info',
-    });
+    trackAuth('login_attempt_started');
 
     try {
       // 1️⃣ Sanitize
@@ -83,22 +79,13 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         },
         {
           onRequest: () => {
-            Sentry.addBreadcrumb({
-              category: 'auth',
-              message: 'Better Auth request sent',
-            });
+            trackAuth('better_auth_request_sent');
           },
           onSuccess: () => {
-            Sentry.addBreadcrumb({
-              category: 'auth',
-              message: 'Better Auth success',
-              level: 'info',
-            });
+            trackAuth('better_auth_success');
           },
           onError: (context) => {
-            Sentry.captureException(context.error, {
-              tags: { component: 'login', phase: 'better-auth' },
-            });
+            trackAuthError(context.error, 'better_auth_call');
           },
         },
       );
@@ -121,10 +108,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         setErrors({ submit: message });
 
         if (error.status === 429) {
-          Sentry.captureMessage('Rate limit exceeded on login', {
-            level: 'warning',
-            tags: { component: 'login' },
-          });
+          trackAuth('rate_limit_exceeded', {}, 'warning');
         }
 
         console.error('[LoginForm] Better Auth error:', {
@@ -142,11 +126,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
           '[LoginForm] Login successful, redirecting with hard reload...',
         );
 
-        Sentry.addBreadcrumb({
-          category: 'auth',
-          message: 'Login successful, hard redirecting',
-          level: 'info',
-        });
+        trackAuth('login_successful_hard_redirecting');
 
         // 🔥 SOLUTION: Hard redirect au lieu de router.push
         // Cela force Next.js à bypass le cache et recharger complètement
@@ -165,9 +145,7 @@ export default function LoginForm({ callbackUrl = '/dashboard' }) {
         console.log('[LoginForm] Validation errors:', newErrors);
       } else {
         console.error('[LoginForm] Unexpected error:', validationError);
-        Sentry.captureException(validationError, {
-          tags: { component: 'login', phase: 'validation' },
-        });
+        trackAuthError(validationError, 'validation');
         setErrors({
           submit: 'An unexpected error occurred. Please try again.',
         });

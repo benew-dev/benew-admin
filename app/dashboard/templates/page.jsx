@@ -5,7 +5,11 @@ import { query } from '@/backend/dbConnect';
 import { auth } from '@/lib/auth';
 import ListTemplates from '@/ui/pages/templates/ListTemplates';
 import logger from '@/utils/logger';
-import * as Sentry from '@sentry/nextjs';
+import {
+  trackDatabase,
+  trackDatabaseError,
+  trackAuth,
+} from '@/utils/monitoring';
 
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
@@ -43,14 +47,9 @@ async function getTemplates() {
       component: 'templates_page',
     });
 
-    Sentry.addBreadcrumb({
-      category: 'database',
-      message: 'Templates fetched',
-      level: 'info',
-      data: {
-        count: result.rows.length,
-        durationMs: duration,
-      },
+    trackDatabase('templates_fetched', {
+      count: result.rows.length,
+      durationMs: duration,
     });
 
     return result.rows.map((template) => ({
@@ -74,16 +73,9 @@ async function getTemplates() {
       postgresCode: error.code,
     });
 
-    Sentry.captureException(error, {
-      tags: {
-        component: 'templates_page',
-        action: 'fetch_templates',
-        error_category: 'database',
-      },
-      extra: {
-        durationMs: duration,
-        postgresCode: error.code,
-      },
+    trackDatabaseError(error, 'templates_fetch', {
+      durationMs: duration,
+      postgresCode: error.code,
     });
 
     return [];
@@ -101,11 +93,13 @@ async function checkAuth() {
         component: 'templates_page',
       });
 
-      Sentry.addBreadcrumb({
-        category: 'auth',
-        message: 'Unauthenticated access attempt',
-        level: 'warning',
-      });
+      trackAuth(
+        'unauthenticated_access_attempt',
+        {
+          page: 'templates',
+        },
+        'warning',
+      );
 
       return null;
     }
@@ -122,12 +116,7 @@ async function checkAuth() {
       component: 'templates_page',
     });
 
-    Sentry.captureException(error, {
-      tags: {
-        component: 'templates_page',
-        action: 'auth_check',
-      },
-    });
+    trackDatabaseError(error, 'auth_check');
 
     return null;
   }
@@ -160,12 +149,8 @@ export default async function TemplatesPage() {
       component: 'templates_page',
     });
 
-    Sentry.captureException(error, {
-      tags: {
-        component: 'templates_page',
-        action: 'page_render',
-        critical: 'true',
-      },
+    trackDatabaseError(error, 'page_render', {
+      critical: 'true',
     });
 
     return <ListTemplates data={[]} />;

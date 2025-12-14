@@ -1,261 +1,464 @@
+// ui/pages/templates/AddTemplateForm.jsx - CLIENT COMPONENT
 'use client';
-import { useState } from 'react';
+
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { CldUploadWidget, CldImage } from 'next-cloudinary';
-import * as Sentry from '@sentry/nextjs';
-import { sanitizeTemplateInputs } from '@/utils/sanitizers/sanitizeTemplateInputs';
-import { templateAddingSchema } from '@/utils/schemas/templateSchema';
-import styles from '@/ui/styling/dashboard/templates/addTemplate.module.css';
+import Image from 'next/image';
+import DOMPurify from 'isomorphic-dompurify';
+import {
+  trackUI,
+  trackUpload,
+  trackUploadError,
+  trackForm,
+} from '@/utils/monitoring';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILES = 5;
+const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 
 export default function AddTemplateForm() {
-  const [templateName, setTemplateName] = useState('');
-  const [hasWeb, setHasWeb] = useState(true);
-  const [hasMobile, setHasMobile] = useState(false);
-  const [imageIds, setImageIds] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [validationErrors, setValidationErrors] = useState({});
   const router = useRouter();
+  const [formData, setFormData] = useState({
+    templateName: '',
+    templateHasWeb: true,
+    templateHasMobile: false,
+  });
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [uploadedImageIds, setUploadedImageIds] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleUploadSuccess = (result) => {
-    const uploadInfo = result.info;
-    setImageIds((prev) => [...prev, uploadInfo.public_id]);
-    setSuccess('Image uploaded!');
-    setTimeout(() => setSuccess(''), 3000);
-    if (validationErrors.templateImageIds) {
-      setValidationErrors((prev) => ({ ...prev, templateImageIds: '' }));
+  // ===== FILE VALIDATION =====
+  const validateFile = useCallback((file) => {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return `${file.name}: Invalid file type. Only JPEG, PNG, and WebP allowed.`;
     }
-    Sentry.addBreadcrumb({
-      category: 'upload',
-      message: 'Template image uploaded',
-      level: 'info',
-      data: { publicId: uploadInfo.public_id },
-    });
-  };
-
-  const handleUploadError = (error) => {
-    setError('Failed to upload image.');
-    console.error('Upload error:', error);
-    Sentry.captureException(error, {
-      tags: { component: 'add_template_form', action: 'image_upload' },
-    });
-  };
-
-  const handleRemoveImage = (indexToRemove) => {
-    setImageIds((prev) => prev.filter((_, index) => index !== indexToRemove));
-  };
-
-  const clearFieldError = (fieldName) => {
-    if (validationErrors[fieldName]) {
-      setValidationErrors((prev) => ({ ...prev, [fieldName]: '' }));
+    if (file.size > MAX_FILE_SIZE) {
+      return `${file.name}: File too large. Max size is 5MB.`;
     }
-  };
+    return null;
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setValidationErrors({});
+  // ===== FILE SELECTION =====
+  const handleFileSelect = useCallback(
+    (e) => {
+      const files = Array.from(e.target.files || []);
 
-    const formData = {
-      templateName,
-      templateImageIds: imageIds,
-      templateHasWeb: hasWeb,
-      templateHasMobile: hasMobile,
-    };
+      trackUI('file_selection_started', {
+        filesCount: files.length,
+      });
+
+      // Validate total count
+      if (selectedFiles.length + files.length > MAX_FILES) {
+        setErrors((prev) => ({
+          ...prev,
+          files: `Maximum ${MAX_FILES} images allowed. You have ${selectedFiles.length} selected.`,
+        }));
+        trackUI(
+          'file_selection_limit_exceeded',
+          {
+            attempted: files.length,
+            current: selectedFiles.length,
+          },
+          'warning',
+        );
+        return;
+      }
+
+      // Validate each file
+      const validationErrors = [];
+      const validFiles = [];
+
+      files.forEach((file) => {
+        const error = validateFile(file);
+        if (error) {
+          validationErrors.push(error);
+        } else {
+          validFiles.push(file);
+        }
+      });
+
+      if (validationErrors.length > 0) {
+        setErrors((prev) => ({
+          ...prev,
+          files: validationErrors.join(' | '),
+        }));
+        trackUI(
+          'file_validation_failed',
+          {
+            errorsCount: validationErrors.length,
+          },
+          'warning',
+        );
+        return;
+      }
+
+      // Create previews
+      const newPreviews = validFiles.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+      }));
+
+      setSelectedFiles((prev) => [...prev, ...validFiles]);
+      setPreviews((prev) => [...prev, ...newPreviews]);
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.files;
+        return newErrors;
+      });
+
+      trackUI('files_selected_successfully', {
+        filesCount: validFiles.length,
+      });
+
+      // Clear input
+      e.target.value = '';
+    },
+    [selectedFiles.length, validateFile],
+  );
+
+  // ===== REMOVE IMAGE =====
+  const handleRemoveImage = useCallback((index) => {
+    setPreviews((prev) => {
+      URL.revokeObjectURL(prev[index].url);
+      return prev.filter((_, i) => i !== index);
+    });
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setUploadedImageIds((prev) => prev.filter((_, i) => i !== index));
+
+    trackUI('image_removed', { index });
+  }, []);
+
+  // ===== UPLOAD TO CLOUDINARY =====
+  const uploadToCloudinary = useCallback(async (file) => {
+    trackUpload('cloudinary_upload_started', {
+      fileName: file.name,
+      fileSize: file.size,
+    });
 
     try {
-      const sanitizedData = sanitizeTemplateInputs(formData);
-      await templateAddingSchema.validate(sanitizedData, { abortEarly: false });
-      setIsLoading(true);
+      // 1. Get signature
+      const signatureResponse = await fetch(
+        '/api/dashboard/templates/add/sign-image',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paramsToSign: {
+              timestamp: Math.round(Date.now() / 1000),
+              folder: 'templates',
+            },
+          }),
+        },
+      );
+
+      if (!signatureResponse.ok) {
+        throw new Error('Failed to get upload signature');
+      }
+
+      const { signature } = await signatureResponse.json();
+
+      // 2. Upload to Cloudinary
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY);
+      formData.append('signature', signature);
+      formData.append('timestamp', Math.round(Date.now() / 1000).toString());
+      formData.append('folder', 'templates');
+
+      const uploadResponse = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+      );
+
+      if (!uploadResponse.ok) {
+        throw new Error('Cloudinary upload failed');
+      }
+
+      const result = await uploadResponse.json();
+
+      trackUpload('cloudinary_upload_successful', {
+        publicId: result.public_id,
+      });
+
+      return result.public_id;
+    } catch (error) {
+      console.error('Cloudinary upload error:', error);
+      trackUploadError(error, 'cloudinary_upload', {
+        fileName: file.name,
+      });
+      throw error;
+    }
+  }, []);
+
+  // ===== UPLOAD ALL IMAGES =====
+  const handleUploadImages = useCallback(async () => {
+    if (selectedFiles.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        files: 'Please select at least one image',
+      }));
+      return false;
+    }
+
+    setIsUploading(true);
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.files;
+      return newErrors;
+    });
+
+    trackUpload('batch_upload_started', {
+      filesCount: selectedFiles.length,
+    });
+
+    try {
+      const uploadPromises = selectedFiles.map((file) =>
+        uploadToCloudinary(file),
+      );
+      const imageIds = await Promise.all(uploadPromises);
+      setUploadedImageIds(imageIds);
+
+      trackUpload('batch_upload_successful', {
+        filesCount: imageIds.length,
+      });
+
+      return true;
+    } catch (error) {
+      setErrors((prev) => ({
+        ...prev,
+        files: 'Failed to upload images. Please try again.',
+      }));
+      trackUploadError(error, 'batch_upload');
+      return false;
+    } finally {
+      setIsUploading(false);
+    }
+  }, [selectedFiles, uploadToCloudinary]);
+
+  // ===== FORM SUBMISSION =====
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    trackForm('add_template_submit_started');
+
+    // Upload images first if not already uploaded
+    if (uploadedImageIds.length === 0) {
+      const uploadSuccess = await handleUploadImages();
+      if (!uploadSuccess) return;
+    }
+
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const sanitizedName = DOMPurify.sanitize(formData.templateName.trim());
 
       const response = await fetch('/api/dashboard/templates/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sanitizedData),
+        body: JSON.stringify({
+          templateName: sanitizedName,
+          templateImageIds: uploadedImageIds,
+          templateHasWeb: formData.templateHasWeb,
+          templateHasMobile: formData.templateHasMobile,
+        }),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        if (result.errors) {
-          setValidationErrors(result.errors);
-          setError('Please correct the errors below');
+        if (data.errors) {
+          setErrors(data.errors);
+          trackForm(
+            'add_template_validation_failed',
+            {
+              errors: Object.keys(data.errors),
+            },
+            'warning',
+          );
         } else {
-          throw new Error(result.message || 'Failed to add template');
+          setErrors({ submit: data.error || 'Failed to add template' });
+          trackForm(
+            'add_template_failed',
+            {
+              status: response.status,
+            },
+            'error',
+          );
         }
+        setIsSubmitting(false);
         return;
       }
 
-      setSuccess('Template added successfully!');
-      Sentry.addBreadcrumb({
-        category: 'form',
-        message: 'Template added',
-        level: 'info',
-        data: { templateId: result.templateId },
+      trackForm('add_template_successful', {
+        templateId: data.templateId,
       });
 
-      setTemplateName('');
-      setHasWeb(true);
-      setHasMobile(false);
-      setImageIds([]);
-      setValidationErrors({});
+      // Cleanup previews
+      previews.forEach((preview) => URL.revokeObjectURL(preview.url));
 
-      setTimeout(() => {
-        router.push('/dashboard/templates');
-        router.refresh();
-      }, 1500);
-    } catch (validationError) {
-      if (validationError.name === 'ValidationError') {
-        const newErrors = {};
-        validationError.inner.forEach((error) => {
-          newErrors[error.path] = error.message;
-        });
-        setValidationErrors(newErrors);
-        setError('Please correct the errors below');
-      } else {
-        setError(validationError.message || 'An error occurred');
-        Sentry.captureException(validationError, {
-          tags: { component: 'add_template_form', action: 'submit' },
-        });
-      }
-    } finally {
-      setIsLoading(false);
+      // Redirect
+      router.push('/dashboard/templates?added=true');
+    } catch (error) {
+      console.error('Submit error:', error);
+      trackUploadError(error, 'template_submission');
+      setErrors({ submit: 'An unexpected error occurred' });
+      setIsSubmitting(false);
     }
   };
 
+  // ===== INPUT CHANGE =====
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const isLoading = isUploading || isSubmitting;
+
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Add New Template</h1>
-
-      <form className={styles.form} onSubmit={handleSubmit}>
-        {error && <div className={styles.error}>{error}</div>}
-        {success && <div className={styles.success}>{success}</div>}
-
-        <div className={styles.formGroup}>
-          <label htmlFor="templateName">Template Name</label>
-          <input
-            type="text"
-            id="templateName"
-            value={templateName}
-            onChange={(e) => {
-              setTemplateName(e.target.value);
-              clearFieldError('templateName');
-            }}
-            placeholder="Enter template name"
-            className={`${styles.input} ${validationErrors.templateName ? styles.inputError : ''}`}
-            required
-          />
-          {validationErrors.templateName && (
-            <div className={styles.fieldError}>
-              {validationErrors.templateName}
-            </div>
-          )}
-        </div>
-
-        <div className={styles.checkboxGroup}>
-          <div className={styles.checkbox}>
-            <input
-              type="checkbox"
-              id="hasWeb"
-              checked={hasWeb}
-              onChange={(e) => {
-                setHasWeb(e.target.checked);
-                clearFieldError('templateHasWeb');
-                clearFieldError('templateHasMobile');
-              }}
-            />
-            <label htmlFor="hasWeb">Web</label>
-          </div>
-
-          <div className={styles.checkbox}>
-            <input
-              type="checkbox"
-              id="hasMobile"
-              checked={hasMobile}
-              onChange={(e) => {
-                setHasMobile(e.target.checked);
-                clearFieldError('templateHasWeb');
-                clearFieldError('templateHasMobile');
-              }}
-            />
-            <label htmlFor="hasMobile">Mobile</label>
-          </div>
-        </div>
-
-        {(validationErrors.templateHasWeb ||
-          validationErrors.templateHasMobile) && (
-          <div className={styles.fieldError}>
-            Template must be available for at least one platform
+    <form onSubmit={handleSubmit} className="template-form">
+      {/* Template Name */}
+      <div className="form-group">
+        <label htmlFor="templateName">Template Name *</label>
+        <input
+          id="templateName"
+          name="templateName"
+          type="text"
+          value={formData.templateName}
+          onChange={handleInputChange}
+          disabled={isLoading}
+          placeholder="Summer Collection 2024"
+          aria-invalid={!!errors.templateName}
+          aria-describedby={
+            errors.templateName ? 'templateName-error' : undefined
+          }
+        />
+        {errors.templateName && (
+          <div id="templateName-error" className="error" role="alert">
+            {errors.templateName}
           </div>
         )}
+      </div>
 
-        <div className={styles.imageUpload}>
-          <CldUploadWidget
-            options={{
-              sources: ['local', 'url', 'camera'],
-              multiple: false,
-              folder: 'templates',
-              clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
-              maxImageFileSize: 5000000,
-            }}
-            signatureEndpoint="/api/dashboard/templates/add/sign-image"
-            onSuccess={handleUploadSuccess}
-            onError={handleUploadError}
-          >
-            {({ open }) => (
+      {/* Image Upload */}
+      <div className="form-group">
+        <label htmlFor="images">Images * (Max {MAX_FILES})</label>
+        <input
+          id="images"
+          type="file"
+          multiple
+          accept={ALLOWED_TYPES.join(',')}
+          onChange={handleFileSelect}
+          disabled={isLoading || selectedFiles.length >= MAX_FILES}
+          aria-describedby={errors.files ? 'files-error' : undefined}
+        />
+        {errors.files && (
+          <div id="files-error" className="error" role="alert">
+            {errors.files}
+          </div>
+        )}
+      </div>
+
+      {/* Image Previews */}
+      {previews.length > 0 && (
+        <div className="previews">
+          {previews.map((preview, index) => (
+            <div key={index} className="preview-item">
+              <Image
+                src={preview.url}
+                alt={`Preview ${index + 1}`}
+                width={150}
+                height={150}
+                style={{ objectFit: 'cover' }}
+              />
               <button
                 type="button"
-                className={`${styles.uploadButton} ${validationErrors.templateImageIds ? styles.uploadButtonError : ''}`}
-                onClick={() => open()}
-                disabled={imageIds.length >= 10}
+                onClick={() => handleRemoveImage(index)}
+                disabled={isLoading}
+                className="remove-btn"
+                aria-label={`Remove image ${index + 1}`}
               >
-                Upload Image ({imageIds.length}/10)
+                ×
               </button>
-            )}
-          </CldUploadWidget>
-
-          {validationErrors.templateImageIds && (
-            <div className={styles.fieldError}>
-              {validationErrors.templateImageIds}
             </div>
-          )}
-
-          {imageIds.length > 0 && (
-            <div className={styles.imagesGrid}>
-              {imageIds.map((imageId, index) => (
-                <div key={index} className={styles.imagePreview}>
-                  <CldImage
-                    width="150"
-                    height="100"
-                    src={imageId}
-                    alt={`Preview ${index + 1}`}
-                    crop="fill"
-                    gravity="auto"
-                  />
-                  <button
-                    type="button"
-                    className={styles.removeImageButton}
-                    onClick={() => handleRemoveImage(index)}
-                    aria-label="Remove"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
+      )}
 
+      {/* Platform Checkboxes */}
+      <div className="form-group">
+        <label>Platforms</label>
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              name="templateHasWeb"
+              checked={formData.templateHasWeb}
+              onChange={handleInputChange}
+              disabled={isLoading}
+            />
+            Web
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              name="templateHasMobile"
+              checked={formData.templateHasMobile}
+              onChange={handleInputChange}
+              disabled={isLoading}
+            />
+            Mobile
+          </label>
+        </div>
+      </div>
+
+      {/* Submit Error */}
+      {errors.submit && (
+        <div className="error submit-error" role="alert">
+          {errors.submit}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="form-actions">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          disabled={isLoading}
+          className="btn-secondary"
+        >
+          Cancel
+        </button>
         <button
           type="submit"
-          className={styles.submitButton}
-          disabled={isLoading}
+          disabled={isLoading || selectedFiles.length === 0}
+          className="btn-primary"
+          aria-busy={isLoading}
         >
-          {isLoading ? 'Adding...' : 'Add Template'}
+          {isUploading
+            ? 'Uploading...'
+            : isSubmitting
+              ? 'Adding...'
+              : 'Add Template'}
         </button>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }

@@ -5,7 +5,13 @@ import { getClient } from '@/backend/dbConnect';
 import { getAuthenticatedUser } from '@/lib/auth-utils';
 import { applyRateLimit } from '@/backend/rateLimiter';
 import logger from '@/utils/logger';
-import * as Sentry from '@sentry/nextjs';
+import {
+  trackAPI,
+  trackAuth,
+  trackDatabase,
+  trackDatabaseError,
+  trackValidation,
+} from '@/utils/monitoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,11 +48,9 @@ export async function DELETE(request, { params }) {
     templateId: id,
   });
 
-  Sentry.addBreadcrumb({
-    category: 'api',
-    message: 'Delete template process started',
-    level: 'info',
-    data: { requestId, templateId: id },
+  trackAPI('delete_template_started', {
+    requestId,
+    templateId: id,
   });
 
   try {
@@ -59,12 +63,13 @@ export async function DELETE(request, { params }) {
         requestId,
       });
 
-      Sentry.addBreadcrumb({
-        category: 'validation',
-        message: 'Invalid template ID',
-        level: 'warning',
-        data: { templateId: id },
-      });
+      trackValidation(
+        'invalid_template_id',
+        {
+          templateId: id,
+        },
+        'warning',
+      );
 
       return NextResponse.json(
         {
@@ -87,12 +92,13 @@ export async function DELETE(request, { params }) {
         templateId: id,
       });
 
-      Sentry.addBreadcrumb({
-        category: 'rate_limit',
-        message: 'Delete template rate limit exceeded',
-        level: 'warning',
-        data: { templateId: id },
-      });
+      trackAPI(
+        'rate_limit_exceeded',
+        {
+          templateId: id,
+        },
+        'warning',
+      );
 
       const rateLimitBody = await rateLimitResponse.json();
       return NextResponse.json(rateLimitBody, {
@@ -112,12 +118,13 @@ export async function DELETE(request, { params }) {
         templateId: id,
       });
 
-      Sentry.addBreadcrumb({
-        category: 'auth',
-        message: 'Unauthenticated delete attempt',
-        level: 'warning',
-        data: { templateId: id },
-      });
+      trackAuth(
+        'unauthenticated_delete_attempt',
+        {
+          templateId: id,
+        },
+        'warning',
+      );
 
       return NextResponse.json(
         {
@@ -147,15 +154,9 @@ export async function DELETE(request, { params }) {
         templateId: id,
       });
 
-      Sentry.captureException(dbError, {
-        tags: {
-          component: 'delete_template',
-          action: 'db_connection',
-        },
-        extra: {
-          requestId,
-          templateId: id,
-        },
+      trackDatabaseError(dbError, 'db_connection', {
+        requestId,
+        templateId: id,
       });
 
       return NextResponse.json(
@@ -185,12 +186,13 @@ export async function DELETE(request, { params }) {
           templateId: id,
         });
 
-        Sentry.addBreadcrumb({
-          category: 'database',
-          message: 'Template not found',
-          level: 'warning',
-          data: { templateId: id },
-        });
+        trackDatabase(
+          'template_not_found',
+          {
+            templateId: id,
+          },
+          'warning',
+        );
 
         return NextResponse.json(
           {
@@ -215,15 +217,14 @@ export async function DELETE(request, { params }) {
           templateName: template.template_name,
         });
 
-        Sentry.addBreadcrumb({
-          category: 'business_rule',
-          message: 'Attempted to delete active template',
-          level: 'warning',
-          data: {
+        trackValidation(
+          'delete_active_template_attempt',
+          {
             templateId: id,
             templateName: template.template_name,
           },
-        });
+          'warning',
+        );
 
         return NextResponse.json(
           {
@@ -247,15 +248,9 @@ export async function DELETE(request, { params }) {
         templateId: id,
       });
 
-      Sentry.captureException(checkError, {
-        tags: {
-          component: 'delete_template',
-          action: 'template_check',
-        },
-        extra: {
-          requestId,
-          templateId: id,
-        },
+      trackDatabaseError(checkError, 'template_check', {
+        requestId,
+        templateId: id,
       });
 
       return NextResponse.json(
@@ -290,12 +285,13 @@ export async function DELETE(request, { params }) {
           templateId: id,
         });
 
-        Sentry.addBreadcrumb({
-          category: 'database',
-          message: 'Template deletion failed - no rows affected',
-          level: 'error',
-          data: { templateId: id },
-        });
+        trackDatabase(
+          'template_deletion_failed',
+          {
+            templateId: id,
+          },
+          'error',
+        );
 
         return NextResponse.json(
           {
@@ -319,15 +315,9 @@ export async function DELETE(request, { params }) {
         templateId: id,
       });
 
-      Sentry.captureException(deleteError, {
-        tags: {
-          component: 'delete_template',
-          action: 'deletion',
-        },
-        extra: {
-          requestId,
-          templateId: id,
-        },
+      trackDatabaseError(deleteError, 'deletion', {
+        requestId,
+        templateId: id,
       });
 
       return NextResponse.json(
@@ -362,17 +352,10 @@ export async function DELETE(request, { params }) {
               requestId,
             });
 
-            Sentry.captureException(cloudError, {
-              level: 'warning',
-              tags: {
-                component: 'delete_template',
-                action: 'cloudinary_delete',
-              },
-              extra: {
-                requestId,
-                templateId: id,
-                imageId,
-              },
+            trackDatabaseError(cloudError, 'cloudinary_delete', {
+              requestId,
+              templateId: id,
+              imageId,
             });
           });
       });
@@ -392,15 +375,10 @@ export async function DELETE(request, { params }) {
       requestId,
     });
 
-    Sentry.addBreadcrumb({
-      category: 'database',
-      message: 'Template deleted successfully',
-      level: 'info',
-      data: {
-        templateId: id,
-        templateName: deletedTemplate.template_name,
-        userId: user.id,
-      },
+    trackDatabase('template_deleted_successfully', {
+      templateId: id,
+      templateName: deletedTemplate.template_name,
+      userId: user.id,
     });
 
     return NextResponse.json(
@@ -430,16 +408,11 @@ export async function DELETE(request, { params }) {
       templateId: id,
     });
 
-    Sentry.captureException(error, {
-      tags: {
-        component: 'delete_template',
-        critical: 'true',
-      },
-      extra: {
-        requestId,
-        templateId: id,
-        responseTimeMs: responseTime,
-      },
+    trackDatabaseError(error, 'delete_template', {
+      requestId,
+      templateId: id,
+      responseTimeMs: responseTime,
+      critical: 'true',
     });
 
     return NextResponse.json(

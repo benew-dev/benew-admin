@@ -10,7 +10,13 @@ import {
   templateIdSchema,
 } from '@/utils/schemas/templateSchema';
 import logger from '@/utils/logger';
-import * as Sentry from '@sentry/nextjs';
+import {
+  trackAPI,
+  trackAuth,
+  trackDatabase,
+  trackDatabaseError,
+  trackValidation,
+} from '@/utils/monitoring';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,11 +47,9 @@ export async function PUT(request, { params }) {
     templateId: id,
   });
 
-  Sentry.addBreadcrumb({
-    category: 'api',
-    message: 'Edit template process started',
-    level: 'info',
-    data: { requestId, templateId: id },
+  trackAPI('edit_template_started', {
+    requestId,
+    templateId: id,
   });
 
   try {
@@ -61,12 +65,13 @@ export async function PUT(request, { params }) {
         requestId,
       });
 
-      Sentry.addBreadcrumb({
-        category: 'validation',
-        message: 'Template ID validation failed',
-        level: 'warning',
-        data: { templateId: id },
-      });
+      trackValidation(
+        'template_id_validation_failed',
+        {
+          templateId: id,
+        },
+        'warning',
+      );
 
       return NextResponse.json(
         {
@@ -86,6 +91,14 @@ export async function PUT(request, { params }) {
 
       logger.warn('Rate limit exceeded', { requestId, templateId: id });
 
+      trackAPI(
+        'rate_limit_exceeded',
+        {
+          templateId: id,
+        },
+        'warning',
+      );
+
       const rateLimitBody = await rateLimitResponse.json();
       return NextResponse.json(rateLimitBody, { status: 429, headers });
     }
@@ -100,6 +113,14 @@ export async function PUT(request, { params }) {
         requestId,
         templateId: id,
       });
+
+      trackAuth(
+        'unauthenticated_edit_attempt',
+        {
+          templateId: id,
+        },
+        'warning',
+      );
 
       return NextResponse.json(
         {
@@ -124,9 +145,9 @@ export async function PUT(request, { params }) {
         templateId: id,
       });
 
-      Sentry.captureException(parseError, {
-        tags: { component: 'edit_template', action: 'json_parse' },
-        extra: { requestId, templateId: id },
+      trackDatabaseError(parseError, 'json_parse', {
+        requestId,
+        templateId: id,
       });
 
       return NextResponse.json(
@@ -194,14 +215,13 @@ export async function PUT(request, { params }) {
         templateId: id,
       });
 
-      Sentry.addBreadcrumb({
-        category: 'validation',
-        message: 'Template validation failed',
-        level: 'warning',
-        data: {
+      trackValidation(
+        'template_update_validation_failed',
+        {
           errors: validationError.inner?.map((e) => e.path),
         },
-      });
+        'warning',
+      );
 
       const errors = {};
       validationError.inner.forEach((error) => {
@@ -226,9 +246,9 @@ export async function PUT(request, { params }) {
         templateId: id,
       });
 
-      Sentry.captureException(dbError, {
-        tags: { component: 'edit_template', action: 'db_connection' },
-        extra: { requestId, templateId: id },
+      trackDatabaseError(dbError, 'db_connection', {
+        requestId,
+        templateId: id,
       });
 
       return NextResponse.json(
@@ -255,10 +275,10 @@ export async function PUT(request, { params }) {
             error: cloudError.message,
           });
 
-          Sentry.captureException(cloudError, {
-            level: 'warning',
-            tags: { component: 'edit_template', action: 'cloudinary_delete' },
-            extra: { requestId, templateId: id, imageId },
+          trackDatabaseError(cloudError, 'cloudinary_delete', {
+            requestId,
+            templateId: id,
+            imageId,
           });
         });
       });
@@ -324,12 +344,13 @@ export async function PUT(request, { params }) {
           templateId: id,
         });
 
-        Sentry.addBreadcrumb({
-          category: 'database',
-          message: 'Template not found',
-          level: 'warning',
-          data: { templateId: id },
-        });
+        trackDatabase(
+          'template_not_found',
+          {
+            templateId: id,
+          },
+          'warning',
+        );
 
         return NextResponse.json(
           { success: false, message: 'Template not found' },
@@ -348,9 +369,9 @@ export async function PUT(request, { params }) {
         templateId: id,
       });
 
-      Sentry.captureException(updateError, {
-        tags: { component: 'edit_template', action: 'update' },
-        extra: { requestId, templateId: id },
+      trackDatabaseError(updateError, 'update', {
+        requestId,
+        templateId: id,
       });
 
       return NextResponse.json(
@@ -373,15 +394,10 @@ export async function PUT(request, { params }) {
       requestId,
     });
 
-    Sentry.addBreadcrumb({
-      category: 'database',
-      message: 'Template updated successfully',
-      level: 'info',
-      data: {
-        templateId: id,
-        templateName: updatedTemplate.template_name,
-        userId: user.id,
-      },
+    trackDatabase('template_updated_successfully', {
+      templateId: id,
+      templateName: updatedTemplate.template_name,
+      userId: user.id,
     });
 
     return NextResponse.json(
@@ -408,9 +424,11 @@ export async function PUT(request, { params }) {
       templateId: id,
     });
 
-    Sentry.captureException(error, {
-      tags: { component: 'edit_template', critical: 'true' },
-      extra: { requestId, templateId: id, responseTimeMs: responseTime },
+    trackDatabaseError(error, 'edit_template', {
+      requestId,
+      templateId: id,
+      responseTimeMs: responseTime,
+      critical: 'true',
     });
 
     return NextResponse.json(

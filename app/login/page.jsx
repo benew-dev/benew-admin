@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import '@/ui/styling/login/login.css';
 import LoginForm from '@/ui/components/dashboard/auth/LoginForm';
+import { trackAuth } from '@/utils/monitoring';
 
 /**
  * LOGIN PAGE - Server Component
@@ -22,6 +23,10 @@ export default async function LoginPage({ searchParams }) {
 
   // ✅ Redirect authenticated users immediately
   if (session?.user) {
+    trackAuth('login_page_already_authenticated', {
+      userId: session.user.id,
+      redirectTo: '/dashboard',
+    });
     redirect('/dashboard');
   }
 
@@ -29,6 +34,13 @@ export default async function LoginPage({ searchParams }) {
   const callbackUrl = searchParams?.callbackUrl || '/dashboard';
   const registered = searchParams?.registered === 'true';
   const errorParam = searchParams?.error;
+
+  // Track login page visit
+  trackAuth('login_page_visited', {
+    hasCallback: !!searchParams?.callbackUrl,
+    fromRegistration: registered,
+    hasError: !!errorParam,
+  });
 
   return (
     <div className="container">

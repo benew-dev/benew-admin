@@ -1,73 +1,46 @@
+// ui/pages/templates/ListTemplates.jsx - CLIENT COMPONENT
 'use client';
 
-// ui/pages/templates/ListTemplates.jsx
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Image from 'next/image';
 import {
-  MdAdd,
-  MdEdit,
-  MdDelete,
-  MdMonitor,
-  MdPhoneIphone,
-  MdCheckCircle,
-  MdCancel,
-  MdShoppingCart,
-  MdDateRange,
-  MdUpdate,
-  MdWarning,
-  MdClose,
-  MdRefresh,
-} from 'react-icons/md';
-import { CldImage } from 'next-cloudinary';
-import * as Sentry from '@sentry/nextjs';
+  trackUI,
+  trackNavigation,
+  trackDatabaseError,
+} from '@/utils/monitoring';
 
-import styles from '@/ui/styling/dashboard/templates/templates.module.css';
-
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
-
-export default function ListTemplates({ data: initialData = [] }) {
-  const [templates, setTemplates] = useState(initialData);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
-  const [templateToDelete, setTemplateToDelete] = useState(null);
-
+export default function ListTemplates({ initialTemplates }) {
   const router = useRouter();
+  const [templates, setTemplates] = useState(initialTemplates || []);
+  const [isDeleting, setIsDeleting] = useState(null);
+  const [error, setError] = useState(null);
 
-  const handleDeleteClick = useCallback((template) => {
-    setTemplateToDelete(template);
-    setModalType(template.is_active ? 'active' : 'confirm');
-    setShowModal(true);
-
-    Sentry.addBreadcrumb({
-      category: 'ui',
-      message: 'Delete template modal opened',
-      data: {
-        templateId: template.template_id,
-        isActive: template.is_active,
-      },
+  // Track component mount
+  useEffect(() => {
+    trackUI('list_templates_mounted', {
+      templatesCount: templates.length,
     });
-  }, []);
+  }, [templates.length]);
 
-  const confirmDelete = async () => {
-    if (!templateToDelete) return;
+  // ===== DELETE TEMPLATE =====
+  const handleDelete = useCallback(async (templateId, templateName) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${templateName}"? This action cannot be undone.`,
+      )
+    ) {
+      trackUI('delete_cancelled', { templateId });
+      return;
+    }
 
-    const templateId = templateToDelete.template_id;
-    const templateName = templateToDelete.template_name;
+    setIsDeleting(templateId);
+    setError(null);
 
-    setIsDeleting(true);
-    setShowModal(false);
-
-    const originalTemplates = templates;
-    setTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
+    trackUI('delete_started', {
+      templateId,
+      templateName,
+    });
 
     try {
       const response = await fetch(
@@ -78,271 +51,263 @@ export default function ListTemplates({ data: initialData = [] }) {
         },
       );
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Échec de la suppression');
+      if (!response.ok) {
+        const errorMsg =
+          data.message || data.error || 'Failed to delete template';
+        setError(errorMsg);
+
+        trackUI(
+          'delete_failed',
+          {
+            templateId,
+            status: response.status,
+            error: errorMsg,
+          },
+          'error',
+        );
+
+        return;
       }
 
-      Sentry.addBreadcrumb({
-        category: 'api',
-        message: 'Template deleted successfully',
-        level: 'info',
-        data: { templateId, templateName },
+      // Remove from UI
+      setTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
+
+      trackUI('delete_successful', {
+        templateId,
+        templateName,
       });
 
-      router.refresh();
+      // Optional: Show success toast
+      // showToast('Template deleted successfully');
     } catch (error) {
-      setTemplates(originalTemplates);
+      console.error('Delete error:', error);
+      const errorMsg = 'Network error. Please try again.';
+      setError(errorMsg);
 
-      const errorMessage =
-        error.message || 'Erreur lors de la suppression du template';
-
-      alert(errorMessage);
-
-      Sentry.captureException(error, {
-        tags: {
-          component: 'list_templates',
-          action: 'delete_template',
-          error_category: 'api',
-        },
-        extra: {
-          templateId,
-          templateName,
-        },
+      trackDatabaseError(error, 'delete_template_client', {
+        templateId,
+        templateName,
       });
     } finally {
-      setIsDeleting(false);
-      setTemplateToDelete(null);
+      setIsDeleting(null);
     }
-  };
-
-  const cancelDelete = useCallback(() => {
-    setShowModal(false);
-    setTemplateToDelete(null);
-    setModalType('');
   }, []);
 
-  const handleRefresh = useCallback(() => {
-    router.refresh();
-  }, [router]);
+  // ===== TOGGLE ACTIVE STATUS =====
+  const handleToggleActive = useCallback(async (templateId, currentStatus) => {
+    trackUI('toggle_active_started', {
+      templateId,
+      currentStatus,
+    });
 
-  const renderModal = () => {
-    if (!showModal || !templateToDelete) return null;
+    try {
+      const response = await fetch(
+        `/api/dashboard/templates/${templateId}/edit`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            isActive: !currentStatus,
+          }),
+        },
+      );
 
+      if (!response.ok) {
+        throw new Error('Failed to toggle status');
+      }
+
+      // Update UI
+      setTemplates((prev) =>
+        prev.map((t) =>
+          t.template_id === templateId
+            ? { ...t, is_active: !currentStatus }
+            : t,
+        ),
+      );
+
+      trackUI('toggle_active_successful', {
+        templateId,
+        newStatus: !currentStatus,
+      });
+    } catch (error) {
+      console.error('Toggle active error:', error);
+      trackDatabaseError(error, 'toggle_active', {
+        templateId,
+      });
+      setError('Failed to update template status');
+    }
+  }, []);
+
+  // ===== NAVIGATION =====
+  const handleNavigate = useCallback(
+    (path, templateId) => {
+      trackNavigation('template_navigation', {
+        path,
+        templateId,
+      });
+      router.push(path);
+    },
+    [router],
+  );
+
+  if (templates.length === 0) {
     return (
-      <div className={styles.modalOverlay} onClick={cancelDelete}>
-        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-          <div className={styles.modalHeader}>
-            <div className={styles.modalIcon}>
-              {modalType === 'active' ? (
-                <MdWarning className={styles.warningIcon} />
-              ) : (
-                <MdDelete className={styles.deleteIcon} />
-              )}
-            </div>
-            <button
-              className={styles.closeButton}
-              onClick={cancelDelete}
-              aria-label="Fermer"
-            >
-              <MdClose />
-            </button>
-          </div>
-
-          <div className={styles.modalContent}>
-            {modalType === 'active' ? (
-              <>
-                <h3 className={styles.modalTitle}>Template actif</h3>
-                <p className={styles.modalMessage}>
-                  Le template &quot;
-                  <strong>{templateToDelete.template_name}</strong>&quot; ne
-                  peut pas être supprimé car il est actuellement actif.
-                </p>
-                <p className={styles.modalSubmessage}>
-                  Veuillez d&apos;abord désactiver ce template avant de pouvoir
-                  le supprimer.
-                </p>
-              </>
-            ) : (
-              <>
-                <h3 className={styles.modalTitle}>Confirmer la suppression</h3>
-                <p className={styles.modalMessage}>
-                  Êtes-vous sûr de vouloir supprimer le template &quot;
-                  <strong>{templateToDelete.template_name}</strong>&quot; ?
-                </p>
-                <p className={styles.modalSubmessage}>
-                  Cette action est irréversible. Le template et ses images
-                  associées seront définitivement supprimés.
-                </p>
-              </>
-            )}
-          </div>
-
-          <div className={styles.modalActions}>
-            {modalType === 'active' ? (
-              <button
-                className={styles.modalButtonPrimary}
-                onClick={cancelDelete}
-              >
-                Compris
-              </button>
-            ) : (
-              <>
-                <button
-                  className={styles.modalButtonSecondary}
-                  onClick={cancelDelete}
-                >
-                  Annuler
-                </button>
-                <button
-                  className={styles.modalButtonDanger}
-                  onClick={confirmDelete}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? 'Suppression...' : 'Supprimer'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+      <div className="empty-state">
+        <p>No templates found.</p>
+        <button
+          onClick={() => handleNavigate('/dashboard/templates/add', null)}
+          className="btn-primary"
+        >
+          Create First Template
+        </button>
       </div>
     );
-  };
+  }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.top}>
-        <h1 className={styles.title}>Templates</h1>
-        <div className={styles.headerActions}>
-          <button
-            className={styles.refreshButton}
-            onClick={handleRefresh}
-            title="Actualiser la liste"
-            aria-label="Actualiser"
-          >
-            <MdRefresh />
+    <div className="templates-list">
+      {/* Global Error */}
+      {error && (
+        <div className="error-banner" role="alert">
+          {error}
+          <button onClick={() => setError(null)} aria-label="Dismiss error">
+            ×
           </button>
-          <Link href="/dashboard/templates/add">
-            <button className={styles.addButton} type="button">
-              <MdAdd /> Ajouter
-            </button>
-          </Link>
         </div>
-      </div>
+      )}
 
-      <div className={styles.bottom}>
-        {templates.length === 0 ? (
-          <div className={styles.noTemplates}>
-            <p>Aucun template trouvé. Ajoutez votre premier template.</p>
-          </div>
-        ) : (
-          <div className={styles.grid}>
-            {templates.map((template) => (
-              <div
-                key={template.template_id}
-                className={`${styles.card} ${
-                  template.is_active ? styles.activeCard : styles.inactiveCard
-                }`}
-              >
-                <div className={styles.imageContainer}>
-                  {template.template_images &&
-                  template.template_images.length > 0 ? (
-                    <CldImage
-                      src={template.template_images[0]}
-                      alt={template.template_name}
-                      width={300}
-                      height={200}
-                      crop="fill"
-                      className={styles.templateImage}
-                    />
-                  ) : (
-                    <div className={styles.noImage}>
-                      <span>Pas d&apos;image</span>
-                    </div>
-                  )}
+      {/* Templates Grid */}
+      <div className="templates-grid">
+        {templates.map((template) => (
+          <article
+            key={template.template_id}
+            className="template-card"
+            data-active={template.is_active}
+          >
+            {/* Template Image */}
+            <div className="template-image">
+              {template.template_images?.[0] ? (
+                <Image
+                  src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/c_fill,w_300,h_200/${template.template_images[0]}`}
+                  alt={template.template_name}
+                  width={300}
+                  height={200}
+                  style={{ objectFit: 'cover' }}
+                  priority={false}
+                />
+              ) : (
+                <div className="no-image">No Image</div>
+              )}
 
-                  <div
-                    className={`${styles.statusBadge} ${
-                      template.is_active
-                        ? styles.activeBadge
-                        : styles.inactiveBadge
-                    }`}
-                  >
-                    {template.is_active ? <MdCheckCircle /> : <MdCancel />}
-                    <span>{template.is_active ? 'Actif' : 'Inactif'}</span>
-                  </div>
-                </div>
+              {/* Active Badge */}
+              {template.is_active && (
+                <span className="badge active">Active</span>
+              )}
+            </div>
 
-                <div className={styles.cardContent}>
-                  <div className={styles.informations}>
-                    <h3 className={styles.templateName}>
-                      {template.template_name}
-                    </h3>
-                    <div className={styles.platforms}>
-                      {template.template_has_web && <MdMonitor title="Web" />}
-                      {template.template_has_mobile && (
-                        <MdPhoneIphone title="Mobile" />
-                      )}
-                    </div>
-                  </div>
+            {/* Template Info */}
+            <div className="template-info">
+              <h3>{template.template_name}</h3>
 
-                  <div className={styles.templateStats}>
-                    <div className={styles.stat}>
-                      <MdShoppingCart className={styles.statIcon} />
-                      <span className={styles.statValue}>
-                        {template.sales_count}
-                      </span>
-                      <span className={styles.statLabel}>ventes</span>
-                    </div>
-                    <div className={styles.stat}>
-                      <MdDateRange className={styles.statIcon} />
-                      <span className={styles.statValue}>
-                        {formatDate(template.template_added)}
-                      </span>
-                      <span className={styles.statLabel}>créé</span>
-                    </div>
-                    <div className={styles.stat}>
-                      <MdUpdate className={styles.statIcon} />
-                      <span className={styles.statValue}>
-                        {formatDate(template.updated_at)}
-                      </span>
-                      <span className={styles.statLabel}>mis à jour</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.actions}>
-                    <Link href={`/dashboard/templates/${template.template_id}`}>
-                      <button
-                        className={`${styles.actionButton} ${styles.editButton}`}
-                        title="Modifier"
-                      >
-                        <MdEdit />
-                      </button>
-                    </Link>
-                    <button
-                      className={`${styles.actionButton} ${styles.deleteButton} ${
-                        template.is_active ? styles.disabledButton : ''
-                      }`}
-                      onClick={() => handleDeleteClick(template)}
-                      title={
-                        template.is_active
-                          ? 'Ce template est actif et ne peut pas être supprimé'
-                          : 'Supprimer ce template'
-                      }
-                      disabled={template.is_active}
-                    >
-                      <MdDelete />
-                    </button>
-                  </div>
-                </div>
+              {/* Meta Info */}
+              <div className="template-meta">
+                <span className="platforms">
+                  {template.template_has_web && '🌐 Web'}
+                  {template.template_has_web &&
+                    template.template_has_mobile &&
+                    ' • '}
+                  {template.template_has_mobile && '📱 Mobile'}
+                </span>
+                <span className="images-count">
+                  {template.template_images?.length || 0} image(s)
+                </span>
               </div>
-            ))}
-          </div>
-        )}
+
+              {/* Sales Info */}
+              {template.sales_count > 0 && (
+                <div className="sales-info">{template.sales_count} sale(s)</div>
+              )}
+
+              {/* Actions */}
+              <div className="template-actions">
+                {/* View Details */}
+                <button
+                  onClick={() =>
+                    handleNavigate(
+                      `/dashboard/templates/${template.template_id}`,
+                      template.template_id,
+                    )
+                  }
+                  className="btn-view"
+                  aria-label={`View ${template.template_name}`}
+                >
+                  View
+                </button>
+
+                {/* Edit */}
+                <button
+                  onClick={() =>
+                    handleNavigate(
+                      `/dashboard/templates/${template.template_id}/edit`,
+                      template.template_id,
+                    )
+                  }
+                  className="btn-edit"
+                  aria-label={`Edit ${template.template_name}`}
+                >
+                  Edit
+                </button>
+
+                {/* Toggle Active */}
+                <button
+                  onClick={() =>
+                    handleToggleActive(template.template_id, template.is_active)
+                  }
+                  className={`btn-toggle ${template.is_active ? 'active' : ''}`}
+                  aria-label={`${template.is_active ? 'Deactivate' : 'Activate'} ${template.template_name}`}
+                  aria-pressed={template.is_active}
+                >
+                  {template.is_active ? 'Deactivate' : 'Activate'}
+                </button>
+
+                {/* Delete */}
+                <button
+                  onClick={() =>
+                    handleDelete(template.template_id, template.template_name)
+                  }
+                  disabled={
+                    isDeleting === template.template_id || template.is_active
+                  }
+                  className="btn-delete"
+                  aria-label={`Delete ${template.template_name}`}
+                  aria-busy={isDeleting === template.template_id}
+                  title={
+                    template.is_active
+                      ? 'Deactivate template before deleting'
+                      : 'Delete template'
+                  }
+                >
+                  {isDeleting === template.template_id
+                    ? 'Deleting...'
+                    : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </article>
+        ))}
       </div>
 
-      {renderModal()}
+      {/* Add New Button */}
+      <div className="list-footer">
+        <button
+          onClick={() => handleNavigate('/dashboard/templates/add', null)}
+          className="btn-primary btn-large"
+        >
+          + Add New Template
+        </button>
+      </div>
     </div>
   );
 }
