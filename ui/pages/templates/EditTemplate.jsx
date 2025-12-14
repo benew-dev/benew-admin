@@ -4,6 +4,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import styles from '@/ui/styling/dashboard/templates/editTemplate.module.css';
 import {
   trackUI,
   trackUpload,
@@ -343,170 +344,208 @@ export default function EditTemplate({ template }) {
   const totalImages = existingImages.length + newFiles.length;
 
   return (
-    <form onSubmit={handleSubmit} className="template-form">
-      {/* Template Name */}
-      <div className="form-group">
-        <label htmlFor="templateName">Template Name *</label>
-        <input
-          id="templateName"
-          name="templateName"
-          type="text"
-          value={formData.templateName}
-          onChange={handleInputChange}
-          disabled={isLoading}
-          aria-invalid={!!errors.templateName}
-          aria-describedby={
-            errors.templateName ? 'templateName-error' : undefined
-          }
-        />
-        {errors.templateName && (
-          <div id="templateName-error" className="error" role="alert">
-            {errors.templateName}
-          </div>
-        )}
-      </div>
+    <div className={styles.container}>
+      <h1 className={styles.title}>Edit Template</h1>
 
-      {/* Existing Images */}
-      {existingImages.length > 0 && (
-        <div className="form-group">
-          <label>Current Images</label>
-          <div className="previews">
-            {existingImages.map((imageId, index) => (
-              <div key={imageId} className="preview-item">
-                <Image
-                  src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${imageId}`}
-                  alt={`Existing ${index + 1}`}
-                  width={150}
-                  height={150}
-                  style={{ objectFit: 'cover' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveExistingImage(index)}
-                  disabled={isLoading}
-                  className="remove-btn"
-                  aria-label={`Remove existing image ${index + 1}`}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+      {/* Template Info */}
+      <div className={styles.templateInfo}>
+        <h2 className={styles.infoTitle}>Template Information</h2>
+        <div className={styles.infoGrid}>
+          <div className={styles.infoItem}>
+            <div className={styles.infoLabel}>Template ID</div>
+            <div className={styles.infoValue}>{template.template_id}</div>
           </div>
-        </div>
-      )}
-
-      {/* Add New Images */}
-      <div className="form-group">
-        <label htmlFor="images">
-          Add New Images (Max {MAX_FILES} total, currently {totalImages})
-        </label>
-        <input
-          id="images"
-          type="file"
-          multiple
-          accept={ALLOWED_TYPES.join(',')}
-          onChange={handleFileSelect}
-          disabled={isLoading || totalImages >= MAX_FILES}
-          aria-describedby={errors.files ? 'files-error' : undefined}
-        />
-        {errors.files && (
-          <div id="files-error" className="error" role="alert">
-            {errors.files}
+          <div className={styles.infoItem}>
+            <div className={styles.infoLabel}>Created At</div>
+            <div className={styles.infoValue}>
+              {new Date(template.created_at).toLocaleDateString()}
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* New Image Previews */}
-      {newPreviews.length > 0 && (
-        <div className="form-group">
-          <label>New Images to Upload</label>
-          <div className="previews">
-            {newPreviews.map((preview, index) => (
-              <div key={index} className="preview-item">
-                <Image
-                  src={preview.url}
-                  alt={`New preview ${index + 1}`}
-                  width={150}
-                  height={150}
-                  style={{ objectFit: 'cover' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveNewImage(index)}
-                  disabled={isLoading}
-                  className="remove-btn"
-                  aria-label={`Remove new image ${index + 1}`}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Platform Checkboxes */}
-      <div className="form-group">
-        <label>Platforms</label>
-        <div className="checkbox-group">
-          <label>
-            <input
-              type="checkbox"
-              name="templateHasWeb"
-              checked={formData.templateHasWeb}
-              onChange={handleInputChange}
-              disabled={isLoading}
-            />
-            Web
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              name="templateHasMobile"
-              checked={formData.templateHasMobile}
-              onChange={handleInputChange}
-              disabled={isLoading}
-            />
-            Mobile
-          </label>
+          {template.sales_count > 0 && (
+            <div className={styles.infoItem}>
+              <div className={styles.infoLabel}>Sales Count</div>
+              <div className={styles.salesCount}>{template.sales_count}</div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Active Status */}
-      <div className="form-group">
-        <label>
+      {/* Edit Form */}
+      <form onSubmit={handleSubmit} className={styles.form}>
+        {/* Template Name */}
+        <div className={styles.formGroup}>
+          <label htmlFor="templateName">Template Name *</label>
           <input
-            type="checkbox"
-            name="isActive"
-            checked={formData.isActive}
+            id="templateName"
+            name="templateName"
+            type="text"
+            value={formData.templateName}
             onChange={handleInputChange}
             disabled={isLoading}
+            className={`${styles.input} ${errors.templateName ? styles.inputError : ''}`}
+            aria-invalid={!!errors.templateName}
+            aria-describedby={
+              errors.templateName ? 'templateName-error' : undefined
+            }
           />
-          Active Template
-        </label>
-      </div>
-
-      {/* Submit Error */}
-      {errors.submit && (
-        <div className="error submit-error" role="alert">
-          {errors.submit}
+          {errors.templateName && (
+            <div
+              id="templateName-error"
+              className={styles.fieldError}
+              role="alert"
+            >
+              {errors.templateName}
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Action Buttons */}
-      <div className="form-actions">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          disabled={isLoading}
-          className="btn-secondary"
-        >
-          Cancel
-        </button>
+        {/* Existing Images */}
+        {existingImages.length > 0 && (
+          <div className={styles.formGroup}>
+            <label>Current Images</label>
+            <div className={styles.imagesGrid}>
+              {existingImages.map((imageId, index) => (
+                <div key={imageId} className={styles.imagePreview}>
+                  <Image
+                    src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/${imageId}`}
+                    alt={`Existing ${index + 1}`}
+                    width={200}
+                    height={200}
+                    style={{ objectFit: 'cover', borderRadius: '5px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExistingImage(index)}
+                    disabled={isLoading}
+                    className={styles.removeImageButton}
+                    aria-label={`Remove existing image ${index + 1}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Add New Images */}
+        <div className={styles.formGroup}>
+          <label htmlFor="images">
+            Add New Images (Max {MAX_FILES} total, currently {totalImages})
+          </label>
+          <div className={styles.imageUpload}>
+            <input
+              id="images"
+              type="file"
+              multiple
+              accept={ALLOWED_TYPES.join(',')}
+              onChange={handleFileSelect}
+              disabled={isLoading || totalImages >= MAX_FILES}
+              className={`${styles.uploadButton} ${errors.files ? styles.uploadButtonError : ''}`}
+              aria-describedby={errors.files ? 'files-error' : undefined}
+            />
+            {errors.files && (
+              <div id="files-error" className={styles.fieldError} role="alert">
+                {errors.files}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* New Image Previews */}
+        {newPreviews.length > 0 && (
+          <div className={styles.formGroup}>
+            <label>New Images to Upload</label>
+            <div className={styles.imagesGrid}>
+              {newPreviews.map((preview, index) => (
+                <div key={index} className={styles.imagePreview}>
+                  <Image
+                    src={preview.url}
+                    alt={`New preview ${index + 1}`}
+                    width={200}
+                    height={200}
+                    style={{ objectFit: 'cover', borderRadius: '5px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveNewImage(index)}
+                    disabled={isLoading}
+                    className={styles.removeImageButton}
+                    aria-label={`Remove new image ${index + 1}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Platform Checkboxes */}
+        <div className={styles.formGroup}>
+          <label>Platforms</label>
+          <div className={styles.checkboxGroup}>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="templateHasWeb"
+                name="templateHasWeb"
+                checked={formData.templateHasWeb}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <label htmlFor="templateHasWeb">Web</label>
+            </div>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="templateHasMobile"
+                name="templateHasMobile"
+                checked={formData.templateHasMobile}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <label htmlFor="templateHasMobile">Mobile</label>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Status */}
+        <div className={styles.statusSection}>
+          <div className={styles.statusCheckbox}>
+            <input
+              type="checkbox"
+              id="isActive"
+              name="isActive"
+              checked={formData.isActive}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              className={styles.statusInput}
+            />
+            <label
+              htmlFor="isActive"
+              className={`${styles.statusLabel} ${formData.isActive ? styles.activeLabel : styles.inactiveLabel}`}
+            >
+              <span
+                className={`${styles.statusIndicator} ${formData.isActive ? styles.activeIndicator : styles.inactiveIndicator}`}
+              />
+              {formData.isActive ? 'Active Template' : 'Inactive Template'}
+            </label>
+          </div>
+        </div>
+
+        {/* Submit Error */}
+        {errors.submit && (
+          <div className={styles.error} role="alert">
+            {errors.submit}
+          </div>
+        )}
+
+        {/* Submit Button */}
         <button
           type="submit"
           disabled={isLoading || totalImages === 0}
-          className="btn-primary"
+          className={styles.submitButton}
           aria-busy={isLoading}
         >
           {isUploading
@@ -515,7 +554,7 @@ export default function EditTemplate({ template }) {
               ? 'Saving...'
               : 'Save Changes'}
         </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

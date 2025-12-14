@@ -4,6 +4,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import styles from '@/ui/styling/dashboard/templates/addTemplate.module.css';
 import {
   trackUI,
   trackUpload,
@@ -332,123 +333,127 @@ export default function AddTemplateForm() {
   const isLoading = isUploading || isSubmitting;
 
   return (
-    <form onSubmit={handleSubmit} className="template-form">
-      {/* Template Name */}
-      <div className="form-group">
-        <label htmlFor="templateName">Template Name *</label>
-        <input
-          id="templateName"
-          name="templateName"
-          type="text"
-          value={formData.templateName}
-          onChange={handleInputChange}
-          disabled={isLoading}
-          placeholder="Summer Collection 2024"
-          aria-invalid={!!errors.templateName}
-          aria-describedby={
-            errors.templateName ? 'templateName-error' : undefined
-          }
-        />
-        {errors.templateName && (
-          <div id="templateName-error" className="error" role="alert">
-            {errors.templateName}
-          </div>
-        )}
-      </div>
+    <div className={styles.container}>
+      <h1 className={styles.title}>Add New Template</h1>
 
-      {/* Image Upload */}
-      <div className="form-group">
-        <label htmlFor="images">Images * (Max {MAX_FILES})</label>
-        <input
-          id="images"
-          type="file"
-          multiple
-          accept={ALLOWED_TYPES.join(',')}
-          onChange={handleFileSelect}
-          disabled={isLoading || selectedFiles.length >= MAX_FILES}
-          aria-describedby={errors.files ? 'files-error' : undefined}
-        />
-        {errors.files && (
-          <div id="files-error" className="error" role="alert">
-            {errors.files}
-          </div>
-        )}
-      </div>
-
-      {/* Image Previews */}
-      {previews.length > 0 && (
-        <div className="previews">
-          {previews.map((preview, index) => (
-            <div key={index} className="preview-item">
-              <Image
-                src={preview.url}
-                alt={`Preview ${index + 1}`}
-                width={150}
-                height={150}
-                style={{ objectFit: 'cover' }}
-              />
-              <button
-                type="button"
-                onClick={() => handleRemoveImage(index)}
-                disabled={isLoading}
-                className="remove-btn"
-                aria-label={`Remove image ${index + 1}`}
-              >
-                ×
-              </button>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        {/* Template Name */}
+        <div className={styles.formGroup}>
+          <label htmlFor="templateName">Template Name *</label>
+          <input
+            id="templateName"
+            name="templateName"
+            type="text"
+            value={formData.templateName}
+            onChange={handleInputChange}
+            disabled={isLoading}
+            placeholder="Summer Collection 2024"
+            className={`${styles.input} ${errors.templateName ? styles.inputError : ''}`}
+            aria-invalid={!!errors.templateName}
+            aria-describedby={
+              errors.templateName ? 'templateName-error' : undefined
+            }
+          />
+          {errors.templateName && (
+            <div
+              id="templateName-error"
+              className={styles.fieldError}
+              role="alert"
+            >
+              {errors.templateName}
             </div>
-          ))}
+          )}
         </div>
-      )}
 
-      {/* Platform Checkboxes */}
-      <div className="form-group">
-        <label>Platforms</label>
-        <div className="checkbox-group">
-          <label>
+        {/* Image Upload */}
+        <div className={styles.formGroup}>
+          <label htmlFor="images">Images * (Max {MAX_FILES})</label>
+          <div className={styles.imageUpload}>
             <input
-              type="checkbox"
-              name="templateHasWeb"
-              checked={formData.templateHasWeb}
-              onChange={handleInputChange}
-              disabled={isLoading}
+              id="images"
+              type="file"
+              multiple
+              accept={ALLOWED_TYPES.join(',')}
+              onChange={handleFileSelect}
+              disabled={isLoading || selectedFiles.length >= MAX_FILES}
+              className={`${styles.uploadButton} ${errors.files ? styles.uploadButtonError : ''}`}
+              aria-describedby={errors.files ? 'files-error' : undefined}
             />
-            Web
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              name="templateHasMobile"
-              checked={formData.templateHasMobile}
-              onChange={handleInputChange}
-              disabled={isLoading}
-            />
-            Mobile
-          </label>
+            {errors.files && (
+              <div id="files-error" className={styles.fieldError} role="alert">
+                {errors.files}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Submit Error */}
-      {errors.submit && (
-        <div className="error submit-error" role="alert">
-          {errors.submit}
+        {/* Image Previews */}
+        {previews.length > 0 && (
+          <div className={styles.imagesGrid}>
+            {previews.map((preview, index) => (
+              <div key={index} className={styles.imagePreview}>
+                <Image
+                  src={preview.url}
+                  alt={`Preview ${index + 1}`}
+                  width={150}
+                  height={150}
+                  style={{ objectFit: 'cover', borderRadius: '5px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(index)}
+                  disabled={isLoading}
+                  className={styles.removeImageButton}
+                  aria-label={`Remove image ${index + 1}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Platform Checkboxes */}
+        <div className={styles.formGroup}>
+          <label>Platforms</label>
+          <div className={styles.checkboxGroup}>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="templateHasWeb"
+                name="templateHasWeb"
+                checked={formData.templateHasWeb}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <label htmlFor="templateHasWeb">Web</label>
+            </div>
+            <div className={styles.checkbox}>
+              <input
+                type="checkbox"
+                id="templateHasMobile"
+                name="templateHasMobile"
+                checked={formData.templateHasMobile}
+                onChange={handleInputChange}
+                disabled={isLoading}
+              />
+              <label htmlFor="templateHasMobile">Mobile</label>
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* Action Buttons */}
-      <div className="form-actions">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          disabled={isLoading}
-          className="btn-secondary"
-        >
-          Cancel
-        </button>
+        {/* Submit Error */}
+        {errors.submit && (
+          <div className={styles.error} role="alert">
+            {errors.submit}
+          </div>
+        )}
+
+        {/* Submit Button */}
         <button
           type="submit"
           disabled={isLoading || selectedFiles.length === 0}
-          className="btn-primary"
+          className={styles.submitButton}
           aria-busy={isLoading}
         >
           {isUploading
@@ -457,7 +462,7 @@ export default function AddTemplateForm() {
               ? 'Adding...'
               : 'Add Template'}
         </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
