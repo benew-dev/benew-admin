@@ -4,7 +4,6 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import DOMPurify from 'isomorphic-dompurify';
 import {
   trackUI,
   trackUpload,
@@ -257,7 +256,7 @@ export default function AddTemplateForm() {
     setErrors({});
 
     try {
-      const sanitizedName = DOMPurify.sanitize(formData.templateName.trim());
+      const sanitizedName = formData.templateName.trim();
 
       const response = await fetch('/api/dashboard/templates/add', {
         method: 'POST',

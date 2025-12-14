@@ -4,7 +4,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import DOMPurify from 'isomorphic-dompurify';
 import {
   trackUI,
   trackUpload,
@@ -259,7 +258,7 @@ export default function EditTemplate({ template }) {
     setErrors({});
 
     try {
-      const sanitizedName = DOMPurify.sanitize(formData.templateName.trim());
+      const sanitizedName = formData.templateName.trim();
       const allImageIds = [...existingImages, ...newImageIds];
 
       const response = await fetch(
