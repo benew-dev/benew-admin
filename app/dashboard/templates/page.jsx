@@ -138,6 +138,8 @@ export default async function TemplatesPage() {
       component: 'templates_page',
     });
 
+    console.log('Templates data', templates);
+
     return <ListTemplates data={templates} />;
   } catch (error) {
     if (error.message?.includes('NEXT_REDIRECT')) {
