@@ -14,7 +14,6 @@ import * as Sentry from '@sentry/nextjs';
 
 export const dynamic = 'force-dynamic';
 
-// ===== RATE LIMITING =====
 const editTemplateRateLimit = applyRateLimit('CONTENT_API', {
   windowMs: 2 * 60 * 1000,
   max: 20,
@@ -23,7 +22,6 @@ const editTemplateRateLimit = applyRateLimit('CONTENT_API', {
   prefix: 'edit_template',
 });
 
-// ===== HELPER HEADERS =====
 function createResponseHeaders(requestId, responseTime, templateId) {
   return {
     'X-Request-ID': requestId,
@@ -32,7 +30,6 @@ function createResponseHeaders(requestId, responseTime, templateId) {
   };
 }
 
-// ===== MAIN HANDLER =====
 export async function PUT(request, { params }) {
   let client;
   const startTime = Date.now();
@@ -52,7 +49,6 @@ export async function PUT(request, { params }) {
   });
 
   try {
-    // ===== ÉTAPE 1: VALIDATION ID =====
     try {
       await templateIdSchema.validate({ id }, { abortEarly: false });
     } catch (idValidationError) {
@@ -82,7 +78,6 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 2: RATE LIMITING =====
     const rateLimitResponse = await editTemplateRateLimit(request);
 
     if (rateLimitResponse) {
@@ -95,7 +90,6 @@ export async function PUT(request, { params }) {
       return NextResponse.json(rateLimitBody, { status: 429, headers });
     }
 
-    // ===== ÉTAPE 3: AUTHENTIFICATION =====
     const user = await getAuthenticatedUser();
 
     if (!user) {
@@ -117,7 +111,6 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 4: PARSING BODY =====
     let body;
     try {
       body = await request.json();
@@ -144,24 +137,22 @@ export async function PUT(request, { params }) {
 
     const {
       templateName,
-      templateImageId,
+      templateImageIds,
       templateHasWeb,
       templateHasMobile,
       isActive,
-      oldImageId,
+      oldImageIds,
     } = body;
 
-    // ===== ÉTAPE 5: SANITIZATION (sauf isActive et oldImageId) =====
     const dataToSanitize = {
       templateName,
-      templateImageId,
+      templateImageIds,
       templateHasWeb,
       templateHasMobile,
     };
 
     const filteredDataToSanitize = Object.fromEntries(
       Object.entries(dataToSanitize).filter(
-        // eslint-disable-next-line no-unused-vars
         ([_, value]) => value !== undefined,
       ),
     );
@@ -172,21 +163,19 @@ export async function PUT(request, { params }) {
 
     const {
       templateName: sanitizedTemplateName,
-      templateImageId: sanitizedTemplateImageId,
+      templateImageIds: sanitizedTemplateImageIds,
       templateHasWeb: sanitizedTemplateHasWeb,
       templateHasMobile: sanitizedTemplateHasMobile,
     } = sanitizedInputs;
 
-    // ===== ÉTAPE 6: VALIDATION YUP =====
     try {
       const dataToValidate = Object.fromEntries(
         Object.entries({
           templateName: sanitizedTemplateName,
-          templateImageId: sanitizedTemplateImageId,
+          templateImageIds: sanitizedTemplateImageIds,
           templateHasWeb: sanitizedTemplateHasWeb,
           templateHasMobile: sanitizedTemplateHasMobile,
           isActive,
-          // eslint-disable-next-line no-unused-vars
         }).filter(([_, value]) => value !== undefined),
       );
 
@@ -223,7 +212,6 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 7: CONNEXION DB =====
     try {
       client = await getClient();
     } catch (dbError) {
@@ -247,30 +235,33 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 8: GESTION IMAGE CLOUDINARY =====
     if (
-      oldImageId &&
-      sanitizedTemplateImageId &&
-      oldImageId !== sanitizedTemplateImageId
+      oldImageIds &&
+      Array.isArray(oldImageIds) &&
+      sanitizedTemplateImageIds
     ) {
-      // Suppression asynchrone (non-bloquante)
-      cloudinary.uploader.destroy(oldImageId).catch((cloudError) => {
-        logger.warn('Failed to delete old image from Cloudinary', {
-          requestId,
-          templateId: id,
-          oldImageId,
-          error: cloudError.message,
-        });
+      const imagesToDelete = oldImageIds.filter(
+        (oldId) => !sanitizedTemplateImageIds.includes(oldId),
+      );
 
-        Sentry.captureException(cloudError, {
-          level: 'warning',
-          tags: { component: 'edit_template', action: 'cloudinary_delete' },
-          extra: { requestId, templateId: id, oldImageId },
+      imagesToDelete.forEach((imageId) => {
+        cloudinary.uploader.destroy(imageId).catch((cloudError) => {
+          logger.warn('Failed to delete old image from Cloudinary', {
+            requestId,
+            templateId: id,
+            imageId,
+            error: cloudError.message,
+          });
+
+          Sentry.captureException(cloudError, {
+            level: 'warning',
+            tags: { component: 'edit_template', action: 'cloudinary_delete' },
+            extra: { requestId, templateId: id, imageId },
+          });
         });
       });
     }
 
-    // ===== ÉTAPE 9: UPDATE DATABASE =====
     let result;
     try {
       const updateFields = [];
@@ -283,9 +274,9 @@ export async function PUT(request, { params }) {
         paramCounter++;
       }
 
-      if (sanitizedTemplateImageId !== undefined) {
-        updateFields.push(`template_image = $${paramCounter}`);
-        updateValues.push(sanitizedTemplateImageId);
+      if (sanitizedTemplateImageIds !== undefined) {
+        updateFields.push(`template_images = $${paramCounter}`);
+        updateValues.push(sanitizedTemplateImageIds);
         paramCounter++;
       }
 
@@ -307,7 +298,6 @@ export async function PUT(request, { params }) {
         paramCounter++;
       }
 
-      // Ajouter updated_at
       updateFields.push(`updated_at = NOW()`);
 
       updateValues.push(id);
@@ -367,7 +357,6 @@ export async function PUT(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 10: SUCCÈS =====
     await client.cleanup();
 
     const updatedTemplate = result.rows[0];
@@ -406,7 +395,6 @@ export async function PUT(request, { params }) {
       { status: 200, headers },
     );
   } catch (error) {
-    // ===== GESTION GLOBALE DES ERREURS =====
     if (client) await client.cleanup();
 
     const responseTime = Date.now() - startTime;

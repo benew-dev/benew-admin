@@ -8,7 +8,6 @@ import { templateIdSchema, cleanUUID } from '@/utils/schemas/templateSchema';
 import logger from '@/utils/logger';
 import * as Sentry from '@sentry/nextjs';
 
-// ===== CONFIGURATION =====
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -18,11 +17,6 @@ export const metadata = {
   robots: 'noindex, nofollow',
 };
 
-// ===== HELPER FUNCTIONS =====
-
-/**
- * Vérifie l'authentification utilisateur
- */
 async function checkAuth() {
   try {
     const session = await auth.api.getSession({
@@ -53,9 +47,6 @@ async function checkAuth() {
   }
 }
 
-/**
- * Récupère un template depuis la base de données
- */
 async function getTemplateFromDatabase(templateId) {
   let client;
   const startTime = Date.now();
@@ -74,7 +65,6 @@ async function getTemplateFromDatabase(templateId) {
   });
 
   try {
-    // 1. Validation ID avec Yup
     try {
       await templateIdSchema.validate(
         { id: templateId },
@@ -97,7 +87,6 @@ async function getTemplateFromDatabase(templateId) {
       return null;
     }
 
-    // 2. Nettoyer UUID
     const cleanedTemplateId = cleanUUID(templateId);
     if (!cleanedTemplateId) {
       logger.warn('Template ID cleaning failed', {
@@ -107,7 +96,6 @@ async function getTemplateFromDatabase(templateId) {
       return null;
     }
 
-    // 3. Connexion DB
     try {
       client = await getClient();
     } catch (dbConnectionError) {
@@ -125,14 +113,13 @@ async function getTemplateFromDatabase(templateId) {
       return null;
     }
 
-    // 4. Exécution requête (SANS template_color)
     let result;
     try {
       const templateQuery = `
         SELECT 
           template_id,
           template_name,
-          template_image,
+          template_images,
           template_has_web,
           template_has_mobile,
           template_added,
@@ -160,7 +147,6 @@ async function getTemplateFromDatabase(templateId) {
       return null;
     }
 
-    // 5. Vérification existence
     if (result.rows.length === 0) {
       logger.warn('Template not found', {
         requestId,
@@ -178,12 +164,11 @@ async function getTemplateFromDatabase(templateId) {
       return null;
     }
 
-    // 6. Formatage données (SANS template_color)
     const template = result.rows[0];
     const sanitizedTemplate = {
       template_id: template.template_id,
       template_name: template.template_name || '[No Name]',
-      template_image: template.template_image,
+      template_images: template.template_images || [],
       template_has_web: Boolean(template.template_has_web),
       template_has_mobile: Boolean(template.template_has_mobile),
       template_added: template.template_added,
@@ -192,7 +177,6 @@ async function getTemplateFromDatabase(templateId) {
       updated_at: template.updated_at,
     };
 
-    // 7. Succès
     const responseTime = Date.now() - startTime;
 
     logger.info('Template fetch successful', {
@@ -217,7 +201,6 @@ async function getTemplateFromDatabase(templateId) {
 
     return sanitizedTemplate;
   } catch (error) {
-    // Gestion globale des erreurs
     const responseTime = Date.now() - startTime;
 
     logger.error('Global template fetch error', {
@@ -238,29 +221,22 @@ async function getTemplateFromDatabase(templateId) {
   }
 }
 
-// ===== MAIN PAGE =====
-
 export default async function EditTemplatePage({ params }) {
   try {
-    // Attendre params (Next.js 15)
     const { id } = await params;
 
-    // 1. Vérification auth
     const session = await checkAuth();
 
     if (!session) {
       redirect('/login');
     }
 
-    // 2. Récupération template
     const template = await getTemplateFromDatabase(id);
 
-    // 3. Vérification existence
     if (!template) {
       notFound();
     }
 
-    // 4. Render
     logger.info('Template edit page rendering', {
       templateId: template.template_id,
       templateName: template.template_name,
@@ -269,7 +245,6 @@ export default async function EditTemplatePage({ params }) {
 
     return <EditTemplate template={template} />;
   } catch (error) {
-    // Gestion redirect throws
     if (
       error.message?.includes('NEXT_REDIRECT') ||
       error.message?.includes('NEXT_NOT_FOUND')

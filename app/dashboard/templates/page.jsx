@@ -1,12 +1,4 @@
 // app/dashboard/templates/page.jsx
-// ============================================================================
-// TEMPLATES PAGE - Server Component
-// ============================================================================
-// Application: Admin Dashboard (5 utilisateurs/jour)
-// Optimisé: Décembre 2025
-// Philosophie: Simple, sécurisé, performant
-// ============================================================================
-
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { query } from '@/backend/dbConnect';
@@ -15,35 +7,24 @@ import ListTemplates from '@/ui/pages/templates/ListTemplates';
 import logger from '@/utils/logger';
 import * as Sentry from '@sentry/nextjs';
 
-// ===== CONFIGURATION =====
-
-// Revalidation : 0 = désactive le cache statique (toujours fresh data)
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
-// Metadata
 export const metadata = {
   title: 'Templates | Benew Admin',
   description: 'Gérer les templates disponibles',
   robots: 'noindex, nofollow',
 };
 
-// ===== HELPER FUNCTIONS =====
-
-/**
- * Récupère les templates depuis PostgreSQL
- * @returns {Promise<Array>} Liste des templates ou []
- */
 async function getTemplates() {
   const startTime = Date.now();
 
   try {
-    // Query optimisée : SELECT uniquement les colonnes nécessaires
     const result = await query(`
       SELECT 
         template_id,
         template_name,
-        template_image,
+        template_images,
         template_has_web,
         template_has_mobile,
         template_added,
@@ -62,7 +43,6 @@ async function getTemplates() {
       component: 'templates_page',
     });
 
-    // Breadcrumb Sentry pour debugging
     Sentry.addBreadcrumb({
       category: 'database',
       message: 'Templates fetched',
@@ -73,11 +53,10 @@ async function getTemplates() {
       },
     });
 
-    // Sanitize data (sécurité défensive)
     return result.rows.map((template) => ({
       template_id: template.template_id,
       template_name: template.template_name || '[No Name]',
-      template_image: template.template_image || null,
+      template_images: template.template_images || [],
       template_has_web: Boolean(template.template_has_web),
       template_has_mobile: Boolean(template.template_has_mobile),
       template_added: template.template_added,
@@ -95,7 +74,6 @@ async function getTemplates() {
       postgresCode: error.code,
     });
 
-    // Capturer dans Sentry
     Sentry.captureException(error, {
       tags: {
         component: 'templates_page',
@@ -108,16 +86,10 @@ async function getTemplates() {
       },
     });
 
-    // Retourner tableau vide plutôt que crash
-    // L'utilisateur verra "No templates found"
     return [];
   }
 }
 
-/**
- * Vérifie l'authentification utilisateur
- * @returns {Promise<Object|null>} Session ou null
- */
 async function checkAuth() {
   try {
     const session = await auth.api.getSession({
@@ -161,21 +133,14 @@ async function checkAuth() {
   }
 }
 
-// ===== MAIN PAGE COMPONENT =====
-
-/**
- * Templates Page - Server Component
- */
 export default async function TemplatesPage() {
   try {
-    // 1. Vérifier l'authentification
     const session = await checkAuth();
 
     if (!session) {
       redirect('/login');
     }
 
-    // 2. Récupérer les templates
     const templates = await getTemplates();
 
     logger.info('Templates page rendering', {
@@ -184,12 +149,10 @@ export default async function TemplatesPage() {
       component: 'templates_page',
     });
 
-    // 3. Render
     return <ListTemplates data={templates} />;
   } catch (error) {
-    // Gestion erreur globale (ex: redirect throws)
     if (error.message?.includes('NEXT_REDIRECT')) {
-      throw error; // Laisser Next.js gérer la redirection
+      throw error;
     }
 
     logger.error('Templates page error', {
@@ -205,7 +168,6 @@ export default async function TemplatesPage() {
       },
     });
 
-    // Afficher page vide plutôt que crash
     return <ListTemplates data={[]} />;
   }
 }

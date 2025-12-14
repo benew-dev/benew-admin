@@ -10,7 +10,6 @@ import * as Sentry from '@sentry/nextjs';
 
 export const dynamic = 'force-dynamic';
 
-// ===== RATE LIMITING =====
 const addTemplateRateLimit = applyRateLimit('CONTENT_API', {
   windowMs: 5 * 60 * 1000,
   max: 10,
@@ -19,7 +18,6 @@ const addTemplateRateLimit = applyRateLimit('CONTENT_API', {
   prefix: 'add_template',
 });
 
-// ===== HELPER HEADERS =====
 function createResponseHeaders(requestId, responseTime) {
   return {
     'X-Request-ID': requestId,
@@ -27,7 +25,6 @@ function createResponseHeaders(requestId, responseTime) {
   };
 }
 
-// ===== MAIN HANDLER =====
 export async function POST(request) {
   let client;
   const startTime = Date.now();
@@ -43,7 +40,6 @@ export async function POST(request) {
   });
 
   try {
-    // ===== ÉTAPE 1: RATE LIMITING =====
     const rateLimitResponse = await addTemplateRateLimit(request);
 
     if (rateLimitResponse) {
@@ -56,7 +52,6 @@ export async function POST(request) {
       return NextResponse.json(rateLimitBody, { status: 429, headers });
     }
 
-    // ===== ÉTAPE 2: AUTHENTIFICATION =====
     const user = await getAuthenticatedUser();
 
     if (!user) {
@@ -75,7 +70,6 @@ export async function POST(request) {
       );
     }
 
-    // ===== ÉTAPE 3: PARSING BODY =====
     let body;
     try {
       body = await request.json();
@@ -99,30 +93,32 @@ export async function POST(request) {
       );
     }
 
-    const { templateName, templateImageId, templateHasWeb, templateHasMobile } =
-      body;
+    const {
+      templateName,
+      templateImageIds,
+      templateHasWeb,
+      templateHasMobile,
+    } = body;
 
-    // ===== ÉTAPE 4: SANITIZATION =====
     const sanitizedInputs = sanitizeTemplateInputsStrict({
       templateName,
-      templateImageId,
+      templateImageIds,
       templateHasWeb,
       templateHasMobile,
     });
 
     const {
       templateName: sanitizedTemplateName,
-      templateImageId: sanitizedTemplateImageId,
+      templateImageIds: sanitizedTemplateImageIds,
       templateHasWeb: sanitizedTemplateHasWeb,
       templateHasMobile: sanitizedTemplateHasMobile,
     } = sanitizedInputs;
 
-    // ===== ÉTAPE 5: VALIDATION YUP =====
     try {
       await templateAddingSchema.validate(
         {
           templateName: sanitizedTemplateName,
-          templateImageId: sanitizedTemplateImageId,
+          templateImageIds: sanitizedTemplateImageIds,
           templateHasWeb: sanitizedTemplateHasWeb,
           templateHasMobile: sanitizedTemplateHasMobile,
         },
@@ -157,8 +153,11 @@ export async function POST(request) {
       );
     }
 
-    // ===== ÉTAPE 6: VÉRIFICATION CHAMPS REQUIS =====
-    if (!sanitizedTemplateName || !sanitizedTemplateImageId) {
+    if (
+      !sanitizedTemplateName ||
+      !sanitizedTemplateImageIds ||
+      sanitizedTemplateImageIds.length === 0
+    ) {
       const responseTime = Date.now() - startTime;
       const headers = createResponseHeaders(requestId, responseTime);
 
@@ -167,13 +166,12 @@ export async function POST(request) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Template name and image are required',
+          message: 'Template name and at least one image are required',
         },
         { status: 400, headers },
       );
     }
 
-    // ===== ÉTAPE 7: CONNEXION DB =====
     try {
       client = await getClient();
     } catch (dbError) {
@@ -196,13 +194,12 @@ export async function POST(request) {
       );
     }
 
-    // ===== ÉTAPE 8: INSERTION =====
     let result;
     try {
       const queryText = `
         INSERT INTO catalog.templates (
           template_name,
-          template_image,
+          template_images,
           template_has_web,
           template_has_mobile
         ) VALUES ($1, $2, $3, $4)
@@ -211,7 +208,7 @@ export async function POST(request) {
 
       const values = [
         sanitizedTemplateName,
-        sanitizedTemplateImageId || null,
+        sanitizedTemplateImageIds,
         sanitizedTemplateHasWeb === undefined ? true : sanitizedTemplateHasWeb,
         sanitizedTemplateHasMobile === undefined
           ? false
@@ -241,7 +238,6 @@ export async function POST(request) {
       );
     }
 
-    // ===== ÉTAPE 9: SUCCÈS =====
     await client.cleanup();
 
     const newTemplateId = result.rows[0].template_id;
@@ -251,6 +247,7 @@ export async function POST(request) {
     logger.info('Template added successfully', {
       templateId: newTemplateId,
       templateName: sanitizedTemplateName,
+      imagesCount: sanitizedTemplateImageIds.length,
       responseTimeMs: responseTime,
       userId: user.id,
       requestId,
@@ -280,7 +277,6 @@ export async function POST(request) {
       { status: 201, headers },
     );
   } catch (error) {
-    // ===== GESTION GLOBALE DES ERREURS =====
     if (client) await client.cleanup();
 
     const responseTime = Date.now() - startTime;

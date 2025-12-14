@@ -1,13 +1,6 @@
 'use client';
 
 // ui/pages/templates/ListTemplates.jsx
-// ============================================================================
-// LIST TEMPLATES - Client Component
-// ============================================================================
-// Application: Admin Dashboard (5 utilisateurs/jour)
-// Optimisé: Décembre 2025
-// ============================================================================
-
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -31,11 +24,6 @@ import * as Sentry from '@sentry/nextjs';
 
 import styles from '@/ui/styling/dashboard/templates/templates.module.css';
 
-// ===== HELPER FUNCTIONS =====
-
-/**
- * Formate une date en format FR
- */
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString('fr-FR', {
@@ -45,22 +33,15 @@ function formatDate(dateString) {
   });
 }
 
-// ===== MAIN COMPONENT =====
-
 export default function ListTemplates({ data: initialData = [] }) {
   const [templates, setTemplates] = useState(initialData);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState(''); // 'active' ou 'confirm'
+  const [modalType, setModalType] = useState('');
   const [templateToDelete, setTemplateToDelete] = useState(null);
 
   const router = useRouter();
 
-  // ===== DELETE HANDLERS =====
-
-  /**
-   * Ouvre le modal de suppression
-   */
   const handleDeleteClick = useCallback((template) => {
     setTemplateToDelete(template);
     setModalType(template.is_active ? 'active' : 'confirm');
@@ -76,9 +57,6 @@ export default function ListTemplates({ data: initialData = [] }) {
     });
   }, []);
 
-  /**
-   * Suppression optimiste avec rollback
-   */
   const confirmDelete = async () => {
     if (!templateToDelete) return;
 
@@ -88,12 +66,10 @@ export default function ListTemplates({ data: initialData = [] }) {
     setIsDeleting(true);
     setShowModal(false);
 
-    // 1. Suppression optimiste (UI)
     const originalTemplates = templates;
     setTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
 
     try {
-      // 2. Appel API
       const response = await fetch(
         `/api/dashboard/templates/${templateId}/delete`,
         {
@@ -108,7 +84,6 @@ export default function ListTemplates({ data: initialData = [] }) {
         throw new Error(result.message || 'Échec de la suppression');
       }
 
-      // 3. Succès
       Sentry.addBreadcrumb({
         category: 'api',
         message: 'Template deleted successfully',
@@ -116,10 +91,8 @@ export default function ListTemplates({ data: initialData = [] }) {
         data: { templateId, templateName },
       });
 
-      // Refresh pour garantir la cohérence
       router.refresh();
     } catch (error) {
-      // 4. Rollback en cas d'erreur
       setTemplates(originalTemplates);
 
       const errorMessage =
@@ -144,23 +117,15 @@ export default function ListTemplates({ data: initialData = [] }) {
     }
   };
 
-  /**
-   * Annule la suppression
-   */
   const cancelDelete = useCallback(() => {
     setShowModal(false);
     setTemplateToDelete(null);
     setModalType('');
   }, []);
 
-  /**
-   * Refresh manuel
-   */
   const handleRefresh = useCallback(() => {
     router.refresh();
   }, [router]);
-
-  // ===== RENDER MODAL =====
 
   const renderModal = () => {
     if (!showModal || !templateToDelete) return null;
@@ -207,8 +172,8 @@ export default function ListTemplates({ data: initialData = [] }) {
                   <strong>{templateToDelete.template_name}</strong>&quot; ?
                 </p>
                 <p className={styles.modalSubmessage}>
-                  Cette action est irréversible. Le template et son image
-                  associée seront définitivement supprimés.
+                  Cette action est irréversible. Le template et ses images
+                  associées seront définitivement supprimés.
                 </p>
               </>
             )}
@@ -245,11 +210,8 @@ export default function ListTemplates({ data: initialData = [] }) {
     );
   };
 
-  // ===== RENDER MAIN =====
-
   return (
     <div className={styles.container}>
-      {/* Header */}
       <div className={styles.top}>
         <h1 className={styles.title}>Templates</h1>
         <div className={styles.headerActions}>
@@ -269,7 +231,6 @@ export default function ListTemplates({ data: initialData = [] }) {
         </div>
       </div>
 
-      {/* Content */}
       <div className={styles.bottom}>
         {templates.length === 0 ? (
           <div className={styles.noTemplates}>
@@ -284,11 +245,11 @@ export default function ListTemplates({ data: initialData = [] }) {
                   template.is_active ? styles.activeCard : styles.inactiveCard
                 }`}
               >
-                {/* Image */}
                 <div className={styles.imageContainer}>
-                  {template.template_image ? (
+                  {template.template_images &&
+                  template.template_images.length > 0 ? (
                     <CldImage
-                      src={template.template_image}
+                      src={template.template_images[0]}
                       alt={template.template_name}
                       width={300}
                       height={200}
@@ -301,7 +262,6 @@ export default function ListTemplates({ data: initialData = [] }) {
                     </div>
                   )}
 
-                  {/* Status Badge */}
                   <div
                     className={`${styles.statusBadge} ${
                       template.is_active
@@ -314,9 +274,7 @@ export default function ListTemplates({ data: initialData = [] }) {
                   </div>
                 </div>
 
-                {/* Content */}
                 <div className={styles.cardContent}>
-                  {/* Title & Platforms */}
                   <div className={styles.informations}>
                     <h3 className={styles.templateName}>
                       {template.template_name}
@@ -329,7 +287,6 @@ export default function ListTemplates({ data: initialData = [] }) {
                     </div>
                   </div>
 
-                  {/* Stats */}
                   <div className={styles.templateStats}>
                     <div className={styles.stat}>
                       <MdShoppingCart className={styles.statIcon} />
@@ -354,7 +311,6 @@ export default function ListTemplates({ data: initialData = [] }) {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className={styles.actions}>
                     <Link href={`/dashboard/templates/${template.template_id}`}>
                       <button
@@ -386,7 +342,6 @@ export default function ListTemplates({ data: initialData = [] }) {
         )}
       </div>
 
-      {/* Modal */}
       {renderModal()}
     </div>
   );

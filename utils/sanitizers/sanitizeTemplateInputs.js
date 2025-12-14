@@ -10,38 +10,39 @@ export const sanitizeTemplateInputs = (formData) => {
   const sanitizeTemplateName = (templateName) => {
     if (typeof templateName !== 'string') return templateName;
 
-    return (
-      templateName
-        // Garde seulement les caractères autorisés (lettres, chiffres, espaces, ., _, -)
-        .replace(/[^a-zA-Z0-9._\s-]/g, '')
-        // Supprime les espaces multiples
-        .replace(/\s+/g, ' ')
-        .trim()
-    );
+    return templateName
+      .replace(/[^a-zA-Z0-9._\s-]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
   };
 
-  // Fonction pour sanitizer l'ID d'image Cloudinary
+  // Fonction pour sanitizer UN SEUL ID d'image
   const sanitizeImageId = (imageId) => {
     if (typeof imageId !== 'string') return imageId;
 
-    return (
-      imageId
-        // Garde seulement les caractères valides pour un public_id Cloudinary
-        // Cloudinary accepte: lettres, chiffres, _, -, /, .
-        .replace(/[^a-zA-Z0-9._/-]/g, '')
-        .trim()
-    );
+    return imageId.replace(/[^a-zA-Z0-9._/-]/g, '').trim();
+  };
+
+  // ✅ NOUVEAU: Fonction pour sanitizer ARRAY d'images
+  const sanitizeImageIds = (imageIds) => {
+    // Si ce n'est pas un array, retourner array vide
+    if (!Array.isArray(imageIds)) return [];
+
+    // Filtrer et sanitizer chaque image
+    return imageIds
+      .map((id) => sanitizeImageId(id))
+      .filter((id) => id && id.length > 0); // Enlever les strings vides
   };
 
   // Application de la sanitization à chaque champ
   const sanitizedData = {
     templateName: sanitizeTemplateName(formData.templateName || ''),
-    templateImageId: sanitizeImageId(formData.templateImageId || ''),
+    templateImageIds: sanitizeImageIds(formData.templateImageIds || []), // ✅ ARRAY
     templateHasWeb: Boolean(formData.templateHasWeb),
     templateHasMobile: Boolean(formData.templateHasMobile),
   };
 
-  // Logs pour le debugging (à supprimer en production)
+  // Logs pour le debugging
   if (process.env.NODE_ENV === 'development') {
     const changedFields = [];
     Object.keys(sanitizedData).forEach((key) => {
@@ -70,21 +71,24 @@ export const sanitizeTemplateInputsStrict = (formData) => {
   const strictSanitized = {
     ...basicSanitized,
 
-    // Limite la longueur des champs pour éviter les attaques par déni de service
+    // Limite la longueur des champs
     templateName: basicSanitized.templateName.slice(0, 100),
-    templateImageId: basicSanitized.templateImageId.slice(0, 200),
+    // ✅ NOUVEAU: Limiter chaque image ID ET le nombre total
+    templateImageIds: basicSanitized.templateImageIds
+      .slice(0, 10) // Max 10 images
+      .map((id) => id.slice(0, 200)), // Max 200 chars par ID
   };
 
-  // Vérification additionnelle pour détecter des tentatives d'injection
+  // Vérification patterns suspects
   const suspiciousPatterns = [
     /<script/i,
     /javascript:/i,
     /vbscript:/i,
     /on\w+\s*=/i,
     /data:text\/html/i,
-    /\.\.\//i, // Path traversal
-    /\0/g, // Null bytes
-    /expression\s*\(/i, // CSS expression attacks
+    /\.\.\//i,
+    /\0/g,
+    /expression\s*\(/i,
   ];
 
   Object.entries(strictSanitized).forEach(([key, value]) => {

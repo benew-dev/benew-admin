@@ -38,20 +38,19 @@ export const templateAddingSchema = yup
       )
       .transform((value) => value?.trim()),
 
-    templateImageId: yup
-      .string()
-      .required('Template image is required')
-      .min(1, 'Invalid template image')
-      .max(200, 'Template image ID is too long')
-      .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid template image format')
-      .test(
-        'valid-cloudinary-id',
-        'Invalid Cloudinary image ID format',
-        (value) => {
-          if (!value) return false;
-          return /[a-zA-Z0-9]/.test(value);
-        },
-      ),
+    // ✅ NOUVEAU: Validation ARRAY d'images
+    templateImageIds: yup
+      .array()
+      .of(
+        yup
+          .string()
+          .min(1, 'Invalid template image')
+          .max(200, 'Template image ID is too long')
+          .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid template image format'),
+      )
+      .min(1, 'At least one template image is required')
+      .max(10, 'Maximum 10 images allowed')
+      .required('Template images are required'),
 
     templateHasWeb: yup.boolean().required('Web availability is required'),
 
@@ -106,19 +105,17 @@ export const templateUpdateSchema = yup
       })
       .transform((value) => value?.trim()),
 
-    templateImageId: yup
-      .string()
-      .min(1, 'Invalid template image')
-      .max(200, 'Template image ID is too long')
-      .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid template image format')
-      .test(
-        'valid-cloudinary-id',
-        'Invalid Cloudinary image ID format',
-        (value) => {
-          if (!value) return true;
-          return /[a-zA-Z0-9]/.test(value);
-        },
-      ),
+    // ✅ NOUVEAU: ARRAY optionnel pour update
+    templateImageIds: yup
+      .array()
+      .of(
+        yup
+          .string()
+          .min(1, 'Invalid template image')
+          .max(200, 'Template image ID is too long')
+          .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid template image format'),
+      )
+      .max(10, 'Maximum 10 images allowed'),
 
     templateHasWeb: yup.boolean(),
 
@@ -193,7 +190,7 @@ export const templateIdSchema = yup.object().shape({
 });
 
 /**
- * Fonction utilitaire pour valider un UUID individuel
+ * Fonction utilitaire pour valider un UUID
  */
 export const isValidUUID = (uuid) => {
   if (!uuid || typeof uuid !== 'string') {
@@ -206,7 +203,7 @@ export const isValidUUID = (uuid) => {
 };
 
 /**
- * Fonction utilitaire pour nettoyer et valider un UUID
+ * Fonction utilitaire pour nettoyer un UUID
  */
 export const cleanUUID = (uuid) => {
   if (!uuid || typeof uuid !== 'string') {

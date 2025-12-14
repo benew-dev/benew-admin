@@ -9,23 +9,20 @@ import * as Sentry from '@sentry/nextjs';
 
 export const dynamic = 'force-dynamic';
 
-// ===== RATE LIMITING =====
 const deleteTemplateRateLimit = applyRateLimit('CONTENT_API', {
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 10, // 10 suppressions par 5 minutes
+  windowMs: 5 * 60 * 1000,
+  max: 10,
   message:
     'Trop de tentatives de suppression de templates. Veuillez réessayer dans quelques minutes.',
   prefix: 'delete_template',
 });
 
-// ===== VALIDATION UUID =====
 function isValidUUID(id) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     id,
   );
 }
 
-// ===== HELPER HEADERS =====
 function createResponseHeaders(requestId, responseTime, templateId) {
   return {
     'X-Request-ID': requestId,
@@ -34,7 +31,6 @@ function createResponseHeaders(requestId, responseTime, templateId) {
   };
 }
 
-// ===== MAIN HANDLER =====
 export async function DELETE(request, { params }) {
   let client;
   const startTime = Date.now();
@@ -54,7 +50,6 @@ export async function DELETE(request, { params }) {
   });
 
   try {
-    // ===== ÉTAPE 1: VALIDATION UUID =====
     if (!isValidUUID(id)) {
       const responseTime = Date.now() - startTime;
       const headers = createResponseHeaders(requestId, responseTime, id);
@@ -81,7 +76,6 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 2: RATE LIMITING =====
     const rateLimitResponse = await deleteTemplateRateLimit(request);
 
     if (rateLimitResponse) {
@@ -107,7 +101,6 @@ export async function DELETE(request, { params }) {
       });
     }
 
-    // ===== ÉTAPE 3: AUTHENTIFICATION =====
     const user = await getAuthenticatedUser();
 
     if (!user) {
@@ -142,7 +135,6 @@ export async function DELETE(request, { params }) {
       templateId: id,
     });
 
-    // ===== ÉTAPE 4: CONNEXION BASE DE DONNÉES =====
     try {
       client = await getClient();
     } catch (dbError) {
@@ -175,11 +167,10 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 5: VÉRIFIER EXISTENCE ET STATUT =====
     let template;
     try {
       const checkResult = await client.query(
-        'SELECT template_id, template_name, template_image, is_active FROM catalog.templates WHERE template_id = $1',
+        'SELECT template_id, template_name, template_images, is_active FROM catalog.templates WHERE template_id = $1',
         [id],
       );
 
@@ -212,7 +203,6 @@ export async function DELETE(request, { params }) {
 
       template = checkResult.rows[0];
 
-      // Vérifier que le template est inactif
       if (template.is_active === true) {
         await client.cleanup();
 
@@ -278,16 +268,14 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // ===== ÉTAPE 6: SUPPRESSION DU TEMPLATE =====
     let deleteResult;
     try {
-      // Supprimer uniquement si is_active = false ET sales_count = 0
       deleteResult = await client.query(
         `DELETE FROM catalog.templates 
          WHERE template_id = $1 
          AND is_active = false 
          AND (sales_count = 0 OR sales_count IS NULL)
-         RETURNING template_name, template_image`,
+         RETURNING template_name, template_images`,
         [id],
       );
 
@@ -354,37 +342,42 @@ export async function DELETE(request, { params }) {
 
     const deletedTemplate = deleteResult.rows[0];
 
-    // ===== ÉTAPE 7: SUPPRESSION IMAGE CLOUDINARY (NON-BLOQUANT) =====
-    if (deletedTemplate.template_image) {
-      try {
-        await cloudinary.uploader.destroy(deletedTemplate.template_image);
-        logger.info('Cloudinary image deleted', {
-          imageId: deletedTemplate.template_image,
-          requestId,
-        });
-      } catch (cloudError) {
-        logger.warn('Failed to delete Cloudinary image', {
-          imageId: deletedTemplate.template_image,
-          error: cloudError.message,
-          requestId,
-        });
+    if (
+      deletedTemplate.template_images &&
+      Array.isArray(deletedTemplate.template_images)
+    ) {
+      deletedTemplate.template_images.forEach((imageId) => {
+        cloudinary.uploader
+          .destroy(imageId)
+          .then(() => {
+            logger.info('Cloudinary image deleted', {
+              imageId,
+              requestId,
+            });
+          })
+          .catch((cloudError) => {
+            logger.warn('Failed to delete Cloudinary image', {
+              imageId,
+              error: cloudError.message,
+              requestId,
+            });
 
-        Sentry.captureException(cloudError, {
-          level: 'warning',
-          tags: {
-            component: 'delete_template',
-            action: 'cloudinary_delete',
-          },
-          extra: {
-            requestId,
-            templateId: id,
-            imageId: deletedTemplate.template_image,
-          },
-        });
-      }
+            Sentry.captureException(cloudError, {
+              level: 'warning',
+              tags: {
+                component: 'delete_template',
+                action: 'cloudinary_delete',
+              },
+              extra: {
+                requestId,
+                templateId: id,
+                imageId,
+              },
+            });
+          });
+      });
     }
 
-    // ===== ÉTAPE 8: SUCCÈS =====
     await client.cleanup();
 
     const responseTime = Date.now() - startTime;
@@ -393,6 +386,7 @@ export async function DELETE(request, { params }) {
     logger.info('Template deleted successfully', {
       templateId: id,
       templateName: deletedTemplate.template_name,
+      imagesDeleted: deletedTemplate.template_images?.length || 0,
       responseTimeMs: responseTime,
       userId: user.id,
       requestId,
@@ -412,7 +406,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json(
       {
         success: true,
-        message: 'Template and associated image deleted successfully',
+        message: 'Template and associated images deleted successfully',
         template: {
           id: id,
           name: deletedTemplate.template_name,
@@ -425,7 +419,6 @@ export async function DELETE(request, { params }) {
       { status: 200, headers },
     );
   } catch (error) {
-    // ===== GESTION GLOBALE DES ERREURS =====
     if (client) await client.cleanup();
 
     const responseTime = Date.now() - startTime;

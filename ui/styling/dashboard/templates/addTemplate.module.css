@@ -15,8 +15,6 @@
   font-size: 24px;
 }
 
-/* ===== FORM ===== */
-
 .form {
   display: flex;
   flex-direction: column;
@@ -52,8 +50,6 @@
   border-color: #ef4444 !important;
 }
 
-/* ===== CHECKBOXES ===== */
-
 .checkboxGroup {
   display: flex;
   gap: 20px;
@@ -78,8 +74,6 @@
   cursor: pointer;
 }
 
-/* ===== IMAGE UPLOAD ===== */
-
 .imageUpload {
   display: flex;
   flex-direction: column;
@@ -97,24 +91,63 @@
   font-size: 14px;
 }
 
-.uploadButton:hover {
+.uploadButton:hover:not(:disabled) {
   background-color: #3e4a61;
+}
+
+.uploadButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .uploadButtonError {
   border-color: #ef4444 !important;
 }
 
-.imagePreview {
-  margin-top: 10px;
-  border: 1px dashed #2e374a;
-  border-radius: 5px;
-  padding: 10px;
-  background-color: var(--bg);
-  width: fit-content;
+.imagesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
 }
 
-/* ===== SUBMIT ===== */
+.imagePreview {
+  position: relative;
+  border: 1px solid #2e374a;
+  border-radius: 5px;
+  padding: 5px;
+  background-color: var(--bg);
+  overflow: hidden;
+}
+
+.imagePreview:hover {
+  border-color: #3b82f6;
+}
+
+.removeImageButton {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.removeImageButton:hover {
+  background-color: #dc2626;
+  transform: scale(1.1);
+}
 
 .submitButton {
   background-color: #3b82f6;
@@ -138,8 +171,6 @@
   cursor: not-allowed;
 }
 
-/* ===== MESSAGES ===== */
-
 .error {
   background-color: rgba(239, 68, 68, 0.1);
   color: #ef4444;
@@ -162,18 +193,14 @@
   margin-top: -5px;
 }
 
-/* ===== RESPONSIVE ===== */
-
 @media (max-width: 640px) {
   .container {
     padding: 20px;
     margin: 20px;
   }
-
   .title {
     font-size: 20px;
   }
-
   .checkboxGroup {
     flex-direction: column;
     gap: 10px;

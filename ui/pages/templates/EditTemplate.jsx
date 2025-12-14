@@ -1,11 +1,8 @@
 'use client';
-
-// ui/pages/templates/EditTemplate.jsx
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
 import * as Sentry from '@sentry/nextjs';
-
 import { templateUpdateSchema } from '@/utils/schemas/templateSchema';
 import styles from '@/ui/styling/dashboard/templates/editTemplate.module.css';
 
@@ -14,54 +11,44 @@ export default function EditTemplate({ template }) {
   const [hasWeb, setHasWeb] = useState(template.template_has_web);
   const [hasMobile, setHasMobile] = useState(template.template_has_mobile);
   const [isActive, setIsActive] = useState(template.is_active);
-  const [publicId, setPublicId] = useState(template.template_image);
+  const [imageIds, setImageIds] = useState(template.template_images || []);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
-
   const router = useRouter();
-
-  // ===== UPLOAD HANDLERS =====
 
   const handleUploadSuccess = (result) => {
     const uploadInfo = result.info;
-    setPublicId(uploadInfo.public_id);
-    setSuccess('Image updated successfully!');
+    setImageIds((prev) => [...prev, uploadInfo.public_id]);
+    setSuccess('Image added!');
     setTimeout(() => setSuccess(''), 3000);
-
-    if (validationErrors.templateImageId) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        templateImageId: '',
-      }));
+    if (validationErrors.templateImageIds) {
+      setValidationErrors((prev) => ({ ...prev, templateImageIds: '' }));
     }
-
     Sentry.addBreadcrumb({
       category: 'upload',
-      message: 'Template image updated',
+      message: 'Image added',
       level: 'info',
       data: { publicId: uploadInfo.public_id },
     });
   };
 
   const handleUploadError = (error) => {
-    setError('Failed to upload image. Please try again.');
+    setError('Failed to upload image.');
     console.error('Upload error:', error);
-
     Sentry.captureException(error, {
       tags: { component: 'edit_template_form', action: 'image_upload' },
     });
   };
 
-  // ===== FORM HANDLERS =====
+  const handleRemoveImage = (indexToRemove) => {
+    setImageIds((prev) => prev.filter((_, index) => index !== indexToRemove));
+  };
 
   const clearFieldError = (fieldName) => {
     if (validationErrors[fieldName]) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        [fieldName]: '',
-      }));
+      setValidationErrors((prev) => ({ ...prev, [fieldName]: '' }));
     }
   };
 
@@ -83,16 +70,14 @@ export default function EditTemplate({ template }) {
 
     const formData = {
       templateName,
-      templateImageId: publicId,
+      templateImageIds: imageIds,
       templateHasWeb: hasWeb,
       templateHasMobile: hasMobile,
       isActive: isActive,
     };
 
     try {
-      // Validation Yup côté client
       await templateUpdateSchema.validate(formData, { abortEarly: false });
-
       setIsLoading(true);
 
       const response = await fetch(
@@ -102,11 +87,11 @@ export default function EditTemplate({ template }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             templateName,
-            templateImageId: publicId,
+            templateImageIds: imageIds,
             templateHasWeb: hasWeb,
             templateHasMobile: hasMobile,
             isActive: isActive,
-            oldImageId: template.template_image,
+            oldImageIds: template.template_images,
           }),
         },
       );
@@ -114,50 +99,36 @@ export default function EditTemplate({ template }) {
       const result = await response.json();
 
       if (!response.ok) {
-        // Erreurs validation serveur
         if (result.errors && typeof result.errors === 'object') {
           setValidationErrors(result.errors);
           setError('Please correct the errors below');
           return;
         }
-
         throw new Error(result.message || 'Failed to update template');
       }
 
-      setSuccess('Template updated successfully!');
-
+      setSuccess('Template updated!');
       Sentry.addBreadcrumb({
         category: 'form',
-        message: 'Template updated successfully',
+        message: 'Template updated',
         level: 'info',
         data: { templateId: template.template_id },
       });
 
-      // Redirect
       setTimeout(() => {
         router.push('/dashboard/templates');
         router.refresh();
       }, 1500);
     } catch (validationError) {
       if (validationError.name === 'ValidationError') {
-        // Erreurs Yup
         const newErrors = {};
         validationError.inner.forEach((error) => {
           newErrors[error.path] = error.message;
         });
         setValidationErrors(newErrors);
         setError('Please correct the errors below');
-
-        Sentry.addBreadcrumb({
-          category: 'validation',
-          message: 'Form validation failed',
-          level: 'warning',
-          data: { errors: Object.keys(newErrors) },
-        });
       } else {
-        // Autres erreurs
         setError(validationError.message || 'An error occurred');
-
         Sentry.captureException(validationError, {
           tags: { component: 'edit_template_form', action: 'submit' },
         });
@@ -167,13 +138,10 @@ export default function EditTemplate({ template }) {
     }
   };
 
-  // ===== RENDER =====
-
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Edit Template</h1>
 
-      {/* Informations template */}
       <div className={styles.templateInfo}>
         <h3 className={styles.infoTitle}>Template Information</h3>
         <div className={styles.infoGrid}>
@@ -201,11 +169,9 @@ export default function EditTemplate({ template }) {
       </div>
 
       <form className={styles.form} onSubmit={handleSubmit}>
-        {/* Messages */}
         {error && <div className={styles.error}>{error}</div>}
         {success && <div className={styles.success}>{success}</div>}
 
-        {/* Template Name */}
         <div className={styles.formGroup}>
           <label htmlFor="templateName">Template Name</label>
           <input
@@ -216,10 +182,7 @@ export default function EditTemplate({ template }) {
               setTemplateName(e.target.value);
               clearFieldError('templateName');
             }}
-            placeholder="Enter template name"
-            className={`${styles.input} ${
-              validationErrors.templateName ? styles.inputError : ''
-            }`}
+            className={`${styles.input} ${validationErrors.templateName ? styles.inputError : ''}`}
             required
           />
           {validationErrors.templateName && (
@@ -229,7 +192,6 @@ export default function EditTemplate({ template }) {
           )}
         </div>
 
-        {/* Platforms & Status */}
         <div className={styles.statusSection}>
           <div className={styles.checkboxGroup}>
             <div className={styles.checkbox}>
@@ -245,7 +207,6 @@ export default function EditTemplate({ template }) {
               />
               <label htmlFor="hasWeb">Web</label>
             </div>
-
             <div className={styles.checkbox}>
               <input
                 type="checkbox"
@@ -259,7 +220,6 @@ export default function EditTemplate({ template }) {
               />
               <label htmlFor="hasMobile">Mobile</label>
             </div>
-
             <div className={`${styles.checkbox} ${styles.statusCheckbox}`}>
               <input
                 type="checkbox"
@@ -273,35 +233,26 @@ export default function EditTemplate({ template }) {
               />
               <label
                 htmlFor="isActive"
-                className={`${styles.statusLabel} ${
-                  isActive ? styles.activeLabel : styles.inactiveLabel
-                }`}
+                className={`${styles.statusLabel} ${isActive ? styles.activeLabel : styles.inactiveLabel}`}
               >
                 <span
-                  className={`${styles.statusIndicator} ${
-                    isActive ? styles.activeIndicator : styles.inactiveIndicator
-                  }`}
+                  className={`${styles.statusIndicator} ${isActive ? styles.activeIndicator : styles.inactiveIndicator}`}
                 ></span>
                 {isActive ? 'Active' : 'Inactive'}
               </label>
             </div>
           </div>
-
-          {/* Platform validation error */}
           {(validationErrors.templateHasWeb ||
             validationErrors.templateHasMobile) && (
             <div className={styles.fieldError}>
-              Template must be available for at least one platform (Web or
-              Mobile)
+              Template must be available for at least one platform
             </div>
           )}
-
           {validationErrors.isActive && (
             <div className={styles.fieldError}>{validationErrors.isActive}</div>
           )}
         </div>
 
-        {/* Image Upload */}
         <div className={styles.imageUpload}>
           <CldUploadWidget
             options={{
@@ -309,7 +260,7 @@ export default function EditTemplate({ template }) {
               multiple: false,
               folder: 'templates',
               clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
-              maxImageFileSize: 5000000, // 5MB
+              maxImageFileSize: 5000000,
             }}
             signatureEndpoint="/api/dashboard/templates/add/sign-image"
             onSuccess={handleUploadSuccess}
@@ -318,41 +269,47 @@ export default function EditTemplate({ template }) {
             {({ open }) => (
               <button
                 type="button"
-                className={`${styles.uploadButton} ${
-                  validationErrors.templateImageId
-                    ? styles.uploadButtonError
-                    : ''
-                }`}
+                className={`${styles.uploadButton} ${validationErrors.templateImageIds ? styles.uploadButtonError : ''}`}
                 onClick={() => open()}
+                disabled={imageIds.length >= 10}
               >
-                Update Template Image
+                Add Image ({imageIds.length}/10)
               </button>
             )}
           </CldUploadWidget>
 
-          {validationErrors.templateImageId && (
+          {validationErrors.templateImageIds && (
             <div className={styles.fieldError}>
-              {validationErrors.templateImageId}
+              {validationErrors.templateImageIds}
             </div>
           )}
 
-          {/* Image Preview */}
-          {publicId && (
-            <div className={styles.imagePreview}>
-              <CldImage
-                width="300"
-                height="200"
-                src={publicId}
-                alt="Template Preview"
-                crop="fill"
-                gravity="auto"
-                sizes="(max-width: 768px) 100vw, 300px"
-              />
+          {imageIds.length > 0 && (
+            <div className={styles.imagesGrid}>
+              {imageIds.map((imageId, index) => (
+                <div key={index} className={styles.imagePreview}>
+                  <CldImage
+                    width="200"
+                    height="130"
+                    src={imageId}
+                    alt={`Image ${index + 1}`}
+                    crop="fill"
+                    gravity="auto"
+                  />
+                  <button
+                    type="button"
+                    className={styles.removeImageButton}
+                    onClick={() => handleRemoveImage(index)}
+                    aria-label="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Submit Button */}
         <button
           type="submit"
           className={styles.submitButton}
