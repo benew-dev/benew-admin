@@ -125,7 +125,7 @@ async function getTemplateFromDatabase(templateId) {
       return null;
     }
 
-    // 4. Exécution requête
+    // 4. Exécution requête (SANS template_color)
     let result;
     try {
       const templateQuery = `
@@ -133,7 +133,6 @@ async function getTemplateFromDatabase(templateId) {
           template_id,
           template_name,
           template_image,
-          template_color,
           template_has_web,
           template_has_mobile,
           template_added,
@@ -179,13 +178,12 @@ async function getTemplateFromDatabase(templateId) {
       return null;
     }
 
-    // 6. Formatage données
+    // 6. Formatage données (SANS template_color)
     const template = result.rows[0];
     const sanitizedTemplate = {
       template_id: template.template_id,
       template_name: template.template_name || '[No Name]',
       template_image: template.template_image,
-      template_color: template.template_color || null,
       template_has_web: Boolean(template.template_has_web),
       template_has_mobile: Boolean(template.template_has_mobile),
       template_added: template.template_added,

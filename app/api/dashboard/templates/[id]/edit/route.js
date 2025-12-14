@@ -145,7 +145,6 @@ export async function PUT(request, { params }) {
     const {
       templateName,
       templateImageId,
-      templateColor,
       templateHasWeb,
       templateHasMobile,
       isActive,
@@ -156,14 +155,12 @@ export async function PUT(request, { params }) {
     const dataToSanitize = {
       templateName,
       templateImageId,
-      templateColor,
       templateHasWeb,
       templateHasMobile,
     };
 
     const filteredDataToSanitize = Object.fromEntries(
       Object.entries(dataToSanitize).filter(
-        // eslint-disable-next-line no-unused-vars
         ([_, value]) => value !== undefined,
       ),
     );
@@ -175,7 +172,6 @@ export async function PUT(request, { params }) {
     const {
       templateName: sanitizedTemplateName,
       templateImageId: sanitizedTemplateImageId,
-      templateColor: sanitizedTemplateColor,
       templateHasWeb: sanitizedTemplateHasWeb,
       templateHasMobile: sanitizedTemplateHasMobile,
     } = sanitizedInputs;
@@ -186,11 +182,9 @@ export async function PUT(request, { params }) {
         Object.entries({
           templateName: sanitizedTemplateName,
           templateImageId: sanitizedTemplateImageId,
-          templateColor: sanitizedTemplateColor,
           templateHasWeb: sanitizedTemplateHasWeb,
           templateHasMobile: sanitizedTemplateHasMobile,
           isActive,
-          // eslint-disable-next-line no-unused-vars
         }).filter(([_, value]) => value !== undefined),
       );
 
@@ -290,12 +284,6 @@ export async function PUT(request, { params }) {
       if (sanitizedTemplateImageId !== undefined) {
         updateFields.push(`template_image = $${paramCounter}`);
         updateValues.push(sanitizedTemplateImageId);
-        paramCounter++;
-      }
-
-      if (sanitizedTemplateColor !== undefined) {
-        updateFields.push(`template_color = $${paramCounter}`);
-        updateValues.push(sanitizedTemplateColor);
         paramCounter++;
       }
 

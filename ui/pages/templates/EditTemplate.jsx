@@ -1,7 +1,7 @@
 'use client';
 
 // ui/pages/templates/EditTemplate.jsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CldUploadWidget, CldImage } from 'next-cloudinary';
 import * as Sentry from '@sentry/nextjs';
@@ -15,20 +15,12 @@ export default function EditTemplate({ template }) {
   const [hasMobile, setHasMobile] = useState(template.template_has_mobile);
   const [isActive, setIsActive] = useState(template.is_active);
   const [publicId, setPublicId] = useState(template.template_image);
-  const [templateColor, setTemplateColor] = useState(
-    template.template_color || '#3b82f6',
-  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
 
   const router = useRouter();
-
-  // Sync avec template.template_color
-  useEffect(() => {
-    setTemplateColor(template.template_color || '#3b82f6');
-  }, [template.template_color]);
 
   // ===== UPLOAD HANDLERS =====
 
@@ -94,7 +86,6 @@ export default function EditTemplate({ template }) {
       templateImageId: publicId,
       templateHasWeb: hasWeb,
       templateHasMobile: hasMobile,
-      templateColor,
       isActive: isActive,
     };
 
@@ -114,7 +105,6 @@ export default function EditTemplate({ template }) {
             templateImageId: publicId,
             templateHasWeb: hasWeb,
             templateHasMobile: hasMobile,
-            templateColor,
             isActive: isActive,
             oldImageId: template.template_image,
           }),
@@ -235,46 +225,6 @@ export default function EditTemplate({ template }) {
           {validationErrors.templateName && (
             <div className={styles.fieldError}>
               {validationErrors.templateName}
-            </div>
-          )}
-        </div>
-
-        {/* Template Color */}
-        <div className={styles.formGroup}>
-          <label htmlFor="templateColor">Template Color</label>
-          <div className={styles.colorPickerContainer}>
-            <div
-              className={styles.colorPreview}
-              style={{ backgroundColor: templateColor }}
-            >
-              <span className={styles.colorValue}>{templateColor}</span>
-            </div>
-            <input
-              type="color"
-              id="templateColor"
-              value={templateColor}
-              onChange={(e) => {
-                setTemplateColor(e.target.value);
-                clearFieldError('templateColor');
-              }}
-              className={`${styles.colorPicker} ${
-                validationErrors.templateColor ? styles.inputError : ''
-              }`}
-            />
-            <button
-              type="button"
-              className={styles.colorResetButton}
-              onClick={() =>
-                setTemplateColor(template.template_color || '#3b82f6')
-              }
-              title="Reset to original color"
-            >
-              Reset
-            </button>
-          </div>
-          {validationErrors.templateColor && (
-            <div className={styles.fieldError}>
-              {validationErrors.templateColor}
             </div>
           )}
         </div>
