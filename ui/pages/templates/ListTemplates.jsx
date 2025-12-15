@@ -93,51 +93,6 @@ export default function ListTemplates({ data }) {
     }
   }, []);
 
-  // ===== TOGGLE ACTIVE STATUS =====
-  const handleToggleActive = useCallback(async (templateId, currentStatus) => {
-    trackUI('toggle_active_started', {
-      templateId,
-      currentStatus,
-    });
-
-    try {
-      const response = await fetch(
-        `/api/dashboard/templates/${templateId}/edit`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            isActive: !currentStatus,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle status');
-      }
-
-      // Update UI
-      setTemplates((prev) =>
-        prev.map((t) =>
-          t.template_id === templateId
-            ? { ...t, is_active: !currentStatus }
-            : t,
-        ),
-      );
-
-      trackUI('toggle_active_successful', {
-        templateId,
-        newStatus: !currentStatus,
-      });
-    } catch (error) {
-      console.error('Toggle active error:', error);
-      trackDatabaseError(error, 'toggle_active', {
-        templateId,
-      });
-      setError('Failed to update template status');
-    }
-  }, []);
-
   // ===== NAVIGATION =====
   const handleNavigate = useCallback(
     (path, templateId) => {
@@ -278,7 +233,7 @@ export default function ListTemplates({ data }) {
                   <button
                     onClick={() =>
                       handleNavigate(
-                        `/dashboard/templates/${template.template_id}/edit`,
+                        `/dashboard/templates/${template.template_id}`,
                         template.template_id,
                       )
                     }
