@@ -139,13 +139,13 @@ export default function AddApplication({ templates }) {
         body: JSON.stringify(formData),
       });
 
-      if (!response.ok) {
+      if (!response?.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data?.success) {
         trackForm('add_application_successful', {
           applicationId: data.applicationId,
         });

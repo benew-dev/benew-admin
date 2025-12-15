@@ -39,18 +39,18 @@ export async function POST(request) {
 
   try {
     // Rate limiting
-    const rateLimitResponse = await addApplicationRateLimit(request);
-    if (rateLimitResponse) {
-      const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+    // const rateLimitResponse = await addApplicationRateLimit(request);
+    // if (rateLimitResponse) {
+    //   const responseTime = Date.now() - startTime;
+    //   const headers = createResponseHeaders(requestId, responseTime);
 
-      logger.warn('Add application rate limit exceeded', { requestId });
+    //   logger.warn('Add application rate limit exceeded', { requestId });
 
-      trackDatabase('rate_limit_exceeded', {}, 'warning');
+    //   trackDatabase('rate_limit_exceeded', {}, 'warning');
 
-      const rateLimitBody = await rateLimitResponse.json();
-      return NextResponse.json(rateLimitBody, { status: 429, headers });
-    }
+    //   const rateLimitBody = await rateLimitResponse.json();
+    //   return NextResponse.json(rateLimitBody, { status: 429, headers });
+    // }
 
     // Authentification
     const session = await auth.api.getSession({
