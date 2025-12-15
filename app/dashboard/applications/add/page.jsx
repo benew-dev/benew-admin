@@ -31,11 +31,11 @@ async function getTemplatesFromDatabase() {
         template_images, 
         template_has_web, 
         template_has_mobile,
-        created_at,
+        template_added,
         is_active
       FROM catalog.templates 
       WHERE is_active = true
-      ORDER BY template_name ASC, created_at DESC
+      ORDER BY template_name ASC, template_added DESC
     `;
 
     const result = await client.query(templatesQuery);
