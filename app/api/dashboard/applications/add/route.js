@@ -15,13 +15,13 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const addApplicationRateLimit = applyRateLimit('CONTENT_API', {
-  windowMs: 5 * 60 * 1000,
-  max: 8,
-  message:
-    "Trop de tentatives d'ajout d'applications. Veuillez réessayer dans quelques minutes.",
-  prefix: 'add_application',
-});
+// const addApplicationRateLimit = applyRateLimit('CONTENT_API', {
+//   windowMs: 5 * 60 * 1000,
+//   max: 8,
+//   message:
+//     "Trop de tentatives d'ajout d'applications. Veuillez réessayer dans quelques minutes.",
+//   prefix: 'add_application',
+// });
 
 function createResponseHeaders(requestId, responseTime) {
   return {
