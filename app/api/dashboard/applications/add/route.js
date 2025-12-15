@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getClient } from '@/backend/dbConnect';
-import { applyRateLimit } from '@/backend/rateLimiter';
+// import { applyRateLimit } from '@/backend/rateLimiter';
 import { sanitizeApplicationInputsStrict } from '@/utils/sanitizers/sanitizeApplicationInputs';
 import { applicationAddingSchema } from '@/utils/schemas/applicationSchema';
 import logger from '@/utils/logger';
