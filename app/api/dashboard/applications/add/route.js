@@ -60,7 +60,7 @@ export async function POST(request) {
 
     if (!session?.user) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Unauthenticated add application attempt', { requestId });
 
@@ -68,7 +68,7 @@ export async function POST(request) {
 
       return NextResponse.json(
         { error: 'Authentication required' },
-        { status: 401, headers },
+        { status: 401, header },
       );
     }
 
@@ -78,7 +78,7 @@ export async function POST(request) {
       body = await request.json();
     } catch (parseError) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.error('JSON parse error', {
         error: parseError.message,
@@ -89,7 +89,7 @@ export async function POST(request) {
 
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
-        { status: 400, headers },
+        { status: 400, header },
       );
     }
 
@@ -152,7 +152,7 @@ export async function POST(request) {
       );
     } catch (validationError) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Application validation failed', {
         errors: validationError.inner?.length || 0,
@@ -172,7 +172,7 @@ export async function POST(request) {
         errors[error.path] = error.message;
       });
 
-      return NextResponse.json({ errors }, { status: 400, headers });
+      return NextResponse.json({ errors }, { status: 400, header });
     }
 
     // Validation champs requis
@@ -187,7 +187,7 @@ export async function POST(request) {
       !sanitizedLevel
     ) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Missing required fields', { requestId });
 
@@ -195,7 +195,7 @@ export async function POST(request) {
 
       return NextResponse.json(
         { message: 'All required fields must be provided' },
-        { status: 400, headers },
+        { status: 400, header },
       );
     }
 
@@ -204,7 +204,7 @@ export async function POST(request) {
       client = await getClient();
     } catch (dbError) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.error('Database connection failed', {
         error: dbError.message,
@@ -215,7 +215,7 @@ export async function POST(request) {
 
       return NextResponse.json(
         { error: 'Database connection failed' },
-        { status: 503, headers },
+        { status: 503, header },
       );
     }
 
@@ -256,7 +256,7 @@ export async function POST(request) {
       await client.cleanup();
 
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.error('Application insertion failed', {
         error: insertError.message,
@@ -267,7 +267,7 @@ export async function POST(request) {
 
       return NextResponse.json(
         { error: 'Failed to add application to database' },
-        { status: 500, headers },
+        { status: 500, header },
       );
     }
 
@@ -292,7 +292,7 @@ export async function POST(request) {
 
     await client.cleanup();
 
-    const headers = createResponseHeaders(requestId, responseTime);
+    const header = createResponseHeaders(requestId, responseTime);
 
     return NextResponse.json(
       {
@@ -311,13 +311,13 @@ export async function POST(request) {
           timestamp: new Date().toISOString(),
         },
       },
-      { status: 201, headers },
+      { status: 201, header },
     );
   } catch (error) {
     if (client) await client.cleanup();
 
     const responseTime = Date.now() - startTime;
-    const headers = createResponseHeaders(requestId, responseTime);
+    const header = createResponseHeaders(requestId, responseTime);
 
     logger.error('Global add application error', {
       error: error.message,
@@ -337,7 +337,7 @@ export async function POST(request) {
         success: false,
         requestId,
       },
-      { status: 500, headers },
+      { status: 500, header },
     );
   }
 }
