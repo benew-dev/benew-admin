@@ -50,7 +50,7 @@ export async function PUT(request, { params }) {
       await applicationIdSchema.validate({ id }, { abortEarly: false });
     } catch (idValidationError) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Invalid application ID', {
         requestId,
@@ -71,7 +71,7 @@ export async function PUT(request, { params }) {
             idValidationError.message,
           ],
         },
-        { status: 400, headers },
+        { status: 400, header },
       );
     }
 
@@ -79,7 +79,7 @@ export async function PUT(request, { params }) {
     const cleanedApplicationId = cleanUUID(id);
     if (!cleanedApplicationId) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Application ID cleaning failed', {
         requestId,
@@ -88,7 +88,7 @@ export async function PUT(request, { params }) {
 
       return NextResponse.json(
         { error: 'Invalid application ID format' },
-        { status: 400, headers },
+        { status: 400, header },
       );
     }
 
@@ -96,7 +96,8 @@ export async function PUT(request, { params }) {
     const rateLimitResponse = await editApplicationRateLimit(request);
     if (rateLimitResponse) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      // eslint-disable-next-line no-unused-vars
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Edit rate limit exceeded', {
         requestId,
@@ -115,7 +116,7 @@ export async function PUT(request, { params }) {
 
     if (!session?.user) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Unauthenticated edit attempt', {
         requestId,
@@ -126,7 +127,7 @@ export async function PUT(request, { params }) {
 
       return NextResponse.json(
         { error: 'Authentication required' },
-        { status: 401, headers },
+        { status: 401, header },
       );
     }
 
@@ -135,7 +136,7 @@ export async function PUT(request, { params }) {
       client = await getClient();
     } catch (dbError) {
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.error('Database connection failed', {
         error: dbError.message,
@@ -147,7 +148,7 @@ export async function PUT(request, { params }) {
 
       return NextResponse.json(
         { error: 'Database connection failed' },
-        { status: 503, headers },
+        { status: 503, header },
       );
     }
 
@@ -159,7 +160,7 @@ export async function PUT(request, { params }) {
       await client.cleanup();
 
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.error('JSON parse error', {
         error: parseError.message,
@@ -171,7 +172,7 @@ export async function PUT(request, { params }) {
 
       return NextResponse.json(
         { error: 'Invalid JSON in request body' },
-        { status: 400, headers },
+        { status: 400, header },
       );
     }
 
@@ -205,6 +206,7 @@ export async function PUT(request, { params }) {
 
     const filteredDataToSanitize = Object.fromEntries(
       Object.entries(dataToSanitize).filter(
+        // eslint-disable-next-line no-unused-vars
         ([_, value]) => value !== undefined,
       ),
     );
@@ -235,6 +237,7 @@ export async function PUT(request, { params }) {
           imageUrls: finalData.imageUrls,
           otherVersions: finalData.otherVersions,
           isActive: finalData.isActive,
+          // eslint-disable-next-line no-unused-vars
         }).filter(([_, value]) => value !== undefined),
       );
 
@@ -245,7 +248,7 @@ export async function PUT(request, { params }) {
       await client.cleanup();
 
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.warn('Application validation failed', {
         errors: validationError.inner?.length || 0,
@@ -266,7 +269,7 @@ export async function PUT(request, { params }) {
         errors[error.path] = error.message;
       });
 
-      return NextResponse.json({ errors }, { status: 400, headers });
+      return NextResponse.json({ errors }, { status: 400, header });
     }
 
     // Gestion images Cloudinary (suppression des anciennes)
@@ -392,7 +395,7 @@ export async function PUT(request, { params }) {
         await client.cleanup();
 
         const responseTime = Date.now() - startTime;
-        const headers = createResponseHeaders(requestId, responseTime);
+        const header = createResponseHeaders(requestId, responseTime);
 
         logger.warn('Application not found for update', {
           requestId,
@@ -403,14 +406,14 @@ export async function PUT(request, { params }) {
 
         return NextResponse.json(
           { message: 'Application not found' },
-          { status: 404, headers },
+          { status: 404, header },
         );
       }
     } catch (updateError) {
       await client.cleanup();
 
       const responseTime = Date.now() - startTime;
-      const headers = createResponseHeaders(requestId, responseTime);
+      const header = createResponseHeaders(requestId, responseTime);
 
       logger.error('Application update error', {
         error: updateError.message,
@@ -422,7 +425,7 @@ export async function PUT(request, { params }) {
 
       return NextResponse.json(
         { error: 'Failed to update application', message: updateError.message },
-        { status: 500, headers },
+        { status: 500, header },
       );
     }
 
@@ -464,7 +467,7 @@ export async function PUT(request, { params }) {
 
     await client.cleanup();
 
-    const headers = createResponseHeaders(requestId, responseTime);
+    const header = createResponseHeaders(requestId, responseTime);
 
     return NextResponse.json(
       {
@@ -476,13 +479,13 @@ export async function PUT(request, { params }) {
           timestamp: new Date().toISOString(),
         },
       },
-      { status: 200, headers },
+      { status: 200, header },
     );
   } catch (error) {
     if (client) await client.cleanup();
 
     const responseTime = Date.now() - startTime;
-    const headers = createResponseHeaders(requestId, responseTime);
+    const header = createResponseHeaders(requestId, responseTime);
 
     logger.error('Global edit application error', {
       error: error.message,
@@ -503,7 +506,7 @@ export async function PUT(request, { params }) {
         message: 'Failed to update application',
         requestId,
       },
-      { status: 500, headers },
+      { status: 500, header },
     );
   }
 }
