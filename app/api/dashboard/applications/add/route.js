@@ -1,8 +1,9 @@
 // app/api/dashboard/applications/add/route.js
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { getClient } from '@/backend/dbConnect';
-// import { applyRateLimit } from '@/backend/rateLimiter';
+import { applyRateLimit } from '@/backend/rateLimiter';
 import { sanitizeApplicationInputsStrict } from '@/utils/sanitizers/sanitizeApplicationInputs';
 import { applicationAddingSchema } from '@/utils/schemas/applicationSchema';
 import logger from '@/utils/logger';
@@ -15,13 +16,13 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-// const addApplicationRateLimit = applyRateLimit('CONTENT_API', {
-//   windowMs: 5 * 60 * 1000,
-//   max: 8,
-//   message:
-//     "Trop de tentatives d'ajout d'applications. Veuillez réessayer dans quelques minutes.",
-//   prefix: 'add_application',
-// });
+const addApplicationRateLimit = applyRateLimit('CONTENT_API', {
+  windowMs: 5 * 60 * 1000,
+  max: 8,
+  message:
+    "Trop de tentatives d'ajout d'applications. Veuillez réessayer dans quelques minutes.",
+  prefix: 'add_application',
+});
 
 function createResponseHeaders(requestId, responseTime) {
   return {
@@ -39,18 +40,18 @@ export async function POST(request) {
 
   try {
     // Rate limiting
-    // const rateLimitResponse = await addApplicationRateLimit(request);
-    // if (rateLimitResponse) {
-    //   const responseTime = Date.now() - startTime;
-    //   const headers = createResponseHeaders(requestId, responseTime);
+    const rateLimitResponse = await addApplicationRateLimit(request);
+    if (rateLimitResponse) {
+      const responseTime = Date.now() - startTime;
+      const header = createResponseHeaders(requestId, responseTime);
 
-    //   logger.warn('Add application rate limit exceeded', { requestId });
+      logger.warn('Add application rate limit exceeded', { requestId });
 
-    //   trackDatabase('rate_limit_exceeded', {}, 'warning');
+      trackDatabase('rate_limit_exceeded', {}, 'warning');
 
-    //   const rateLimitBody = await rateLimitResponse.json();
-    //   return NextResponse.json(rateLimitBody, { status: 429, headers });
-    // }
+      const rateLimitBody = await rateLimitResponse.json();
+      return NextResponse.json(rateLimitBody, { status: 429, header });
+    }
 
     // Authentification
     const session = await auth.api.getSession({
