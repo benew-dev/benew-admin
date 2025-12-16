@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // app/api/dashboard/platforms/[id]/delete/route.js
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
@@ -42,7 +43,6 @@ export async function DELETE(request, { params }) {
     // Validation ID
     try {
       await platformIdSchema.validate({ id }, { abortEarly: false });
-      // eslint-disable-next-line no-unused-vars
     } catch (idValidationError) {
       const responseTime = Date.now() - startTime;
       const header = createResponseHeaders(requestId, responseTime);
