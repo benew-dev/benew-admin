@@ -1,0 +1,240 @@
+/* ===== CONTAINER PRIX ET ABONNEMENT ===== */
+
+.priceContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border-left: 3px solid #10b981;
+}
+
+.priceRow,
+.rentRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.priceLabel,
+.rentLabel {
+  font-size: 11px;
+  color: var(--textSoft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.priceValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.rentValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6366f1;
+}
+
+/* ===== BADGE PLATEFORME ===== */
+
+.platformBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(79, 70, 229, 0.1);
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  border-radius: 8px;
+  width: fit-content;
+}
+
+.platformIcon {
+  font-size: 16px;
+  color: #4f46e5;
+}
+
+.platformName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.3px;
+}
+
+/* ===== FALLBACK IMAGE ===== */
+
+.noImage {
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.noImage:hover {
+  transform: scale(1.05);
+  border-color: rgba(79, 70, 229, 0.5);
+}
+
+/* ===== NOTIFICATIONS D'ERREUR ===== */
+
+.errorNotification {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  margin: 16px 24px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.errorIcon {
+  font-size: 20px;
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.errorMessage {
+  flex: 1;
+  font-size: 14px;
+  color: #ef4444;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.errorDismiss {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 18px;
+}
+
+.errorDismiss:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== RESPONSIVE POUR NOUVELLES SECTIONS ===== */
+
+@media (max-width: 768px) {
+  .priceContainer {
+    padding: 8px;
+  }
+
+  .priceRow,
+  .rentRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .priceValue {
+    font-size: 14px;
+  }
+
+  .rentValue {
+    font-size: 13px;
+  }
+
+  .platformBadge {
+    padding: 6px 10px;
+    margin-top: 8px;
+  }
+
+  .platformIcon {
+    font-size: 14px;
+  }
+
+  .platformName {
+    font-size: 11px;
+  }
+
+  .noImage {
+    width: 100%;
+    height: 200px;
+    font-size: 36px;
+  }
+
+  .errorNotification {
+    margin: 12px 16px;
+    padding: 12px 16px;
+    gap: 10px;
+  }
+
+  .errorMessage {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .priceContainer {
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .priceLabel,
+  .rentLabel {
+    font-size: 10px;
+  }
+
+  .priceValue {
+    font-size: 13px;
+  }
+
+  .rentValue {
+    font-size: 12px;
+  }
+
+  .platformBadge {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+
+  .platformIcon {
+    font-size: 13px;
+  }
+
+  .platformName {
+    font-size: 10px;
+  }
+
+  .errorNotification {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .errorDismiss {
+    align-self: flex-end;
+  }
+}
