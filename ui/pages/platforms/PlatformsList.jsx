@@ -21,6 +21,8 @@ export default function PlatformsList({ data }) {
     setPlatforms(data);
     trackUI('platforms_list_mounted', {
       platformCount: data?.length || 0,
+      cashCount: data?.filter((p) => p.is_cash_payment).length || 0,
+      electronicCount: data?.filter((p) => !p.is_cash_payment).length || 0,
     });
   }, [data]);
 
@@ -85,7 +87,19 @@ export default function PlatformsList({ data }) {
             >
               <div className={styles.platformDetails}>
                 <div className={styles.platformHeader}>
-                  <h2>{platform.platform_name}</h2>
+                  <div className={styles.titleGroup}>
+                    <h2>{platform.platform_name}</h2>
+                    {/* ✅ NOUVEAU : Badge type (CASH ou Electronic) */}
+                    <span
+                      className={
+                        platform.is_cash_payment
+                          ? styles.cashBadge
+                          : styles.electronicBadge
+                      }
+                    >
+                      {platform.is_cash_payment ? '💵 CASH' : '💳 Electronic'}
+                    </span>
+                  </div>
                   <span
                     className={`${styles.statusBadge} ${platform.is_active ? styles.active : styles.inactive}`}
                   >
@@ -94,59 +108,125 @@ export default function PlatformsList({ data }) {
                 </div>
 
                 <div className={styles.platformInfo}>
-                  <div className={styles.infoRow}>
-                    <span className={styles.label}>Platform:</span>
-                    <span className={styles.value}>
-                      {platform.platform_name}
-                    </span>
-                  </div>
+                  {/* ✅ MODIFIÉ : Affichage conditionnel selon type */}
+                  {platform.is_cash_payment ? (
+                    // ====== AFFICHAGE CASH ======
+                    <>
+                      <div className={styles.infoRow}>
+                        <span className={styles.label}>Type:</span>
+                        <span className={styles.value}>Cash Payment</span>
+                      </div>
 
-                  <div className={styles.infoRow}>
-                    <span className={styles.label}>Account Name:</span>
-                    <span className={styles.value}>
-                      {platform.account_name}
-                    </span>
-                  </div>
-
-                  <div className={styles.infoRow}>
-                    <span className={styles.label}>Account Number:</span>
-                    <span className={styles.value}>
-                      {platform.account_number}
-                    </span>
-                  </div>
-
-                  <div className={styles.infoRow}>
-                    <span className={styles.label}>Created:</span>
-                    <span className={styles.value}>
-                      {new Date(platform.created_at).toLocaleDateString(
-                        'en-US',
-                        {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        },
+                      {platform.description && (
+                        <div className={styles.infoRow}>
+                          <span className={styles.label}>Description:</span>
+                          <span className={styles.value}>
+                            {platform.description}
+                          </span>
+                        </div>
                       )}
-                    </span>
-                  </div>
 
-                  {platform.updated_at && (
-                    <div className={styles.infoRow}>
-                      <span className={styles.label}>Updated:</span>
-                      <span className={styles.value}>
-                        {new Date(platform.updated_at).toLocaleDateString(
-                          'en-US',
-                          {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          },
-                        )}
-                      </span>
-                    </div>
+                      <div className={styles.infoRow}>
+                        <span className={styles.label}>Created:</span>
+                        <span className={styles.value}>
+                          {new Date(platform.created_at).toLocaleDateString(
+                            'en-US',
+                            {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            },
+                          )}
+                        </span>
+                      </div>
+
+                      {platform.updated_at && (
+                        <div className={styles.infoRow}>
+                          <span className={styles.label}>Updated:</span>
+                          <span className={styles.value}>
+                            {new Date(platform.updated_at).toLocaleDateString(
+                              'en-US',
+                              {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              },
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // ====== AFFICHAGE ELECTRONIC ======
+                    <>
+                      <div className={styles.infoRow}>
+                        <span className={styles.label}>Type:</span>
+                        <span className={styles.value}>
+                          Electronic Platform
+                        </span>
+                      </div>
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.label}>Account Name:</span>
+                        <span className={styles.value}>
+                          {platform.account_name}
+                        </span>
+                      </div>
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.label}>Account Number:</span>
+                        <span className={styles.value}>
+                          {platform.account_number}
+                        </span>
+                      </div>
+
+                      {platform.description && (
+                        <div className={styles.infoRow}>
+                          <span className={styles.label}>Description:</span>
+                          <span className={styles.value}>
+                            {platform.description}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className={styles.infoRow}>
+                        <span className={styles.label}>Created:</span>
+                        <span className={styles.value}>
+                          {new Date(platform.created_at).toLocaleDateString(
+                            'en-US',
+                            {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            },
+                          )}
+                        </span>
+                      </div>
+
+                      {platform.updated_at && (
+                        <div className={styles.infoRow}>
+                          <span className={styles.label}>Updated:</span>
+                          <span className={styles.value}>
+                            {new Date(platform.updated_at).toLocaleDateString(
+                              'en-US',
+                              {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              },
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -157,6 +237,7 @@ export default function PlatformsList({ data }) {
                   onClick={() =>
                     trackNavigation('navigate_to_edit_platform', {
                       platformId: platform.platform_id,
+                      isCashPayment: platform.is_cash_payment,
                     })
                   }
                 >

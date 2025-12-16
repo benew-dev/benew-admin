@@ -25,12 +25,15 @@ async function getPlatformsFromDatabase() {
     // Connexion DB
     client = await getClient();
 
+    // ✅ MODIFIÉ : Ajouter is_cash_payment et description
     const platformsQuery = `
       SELECT 
         platform_id, 
         platform_name,
         account_name,
         account_number, 
+        is_cash_payment,
+        description,
         created_at, 
         updated_at, 
         is_active
@@ -46,28 +49,48 @@ async function getPlatformsFromDatabase() {
       return [];
     }
 
-    // Masquer partiellement les numéros de compte pour la sécurité
-    const sanitizedPlatforms = result.rows.map((platform) => ({
-      platform_id: platform.platform_id,
-      platform_name: platform.platform_name || '[No Name]',
-      account_name: platform.account_name || '[No Account Name]',
-      account_number: platform.account_number
-        ? `${platform.account_number.slice(0, 3)}***${platform.account_number.slice(-2)}`
-        : '[No Number]',
-      created_at: platform.created_at,
-      updated_at: platform.updated_at,
-      is_active: Boolean(platform.is_active),
-    }));
+    // ✅ MODIFIÉ : Masquer partiellement les numéros de compte SEULEMENT pour plateformes électroniques
+    const sanitizedPlatforms = result.rows.map((platform) => {
+      const isCash = Boolean(platform.is_cash_payment);
+
+      return {
+        platform_id: platform.platform_id,
+        platform_name: platform.platform_name || '[No Name]',
+        is_cash_payment: isCash,
+        description: platform.description || null,
+
+        // ✅ Si CASH, account_name et account_number = null
+        account_name: isCash
+          ? null
+          : platform.account_name || '[No Account Name]',
+
+        account_number: isCash
+          ? null
+          : platform.account_number
+            ? `${platform.account_number.slice(0, 3)}***${platform.account_number.slice(-2)}`
+            : '[No Number]',
+
+        created_at: platform.created_at,
+        updated_at: platform.updated_at,
+        is_active: Boolean(platform.is_active),
+      };
+    });
 
     const responseTime = Date.now() - startTime;
 
     logger.info('Platforms fetched successfully', {
       platformCount: sanitizedPlatforms.length,
+      cashCount: sanitizedPlatforms.filter((p) => p.is_cash_payment).length,
+      electronicCount: sanitizedPlatforms.filter((p) => !p.is_cash_payment)
+        .length,
       durationMs: responseTime,
     });
 
     trackDatabase('platforms_fetched', {
       platformCount: sanitizedPlatforms.length,
+      cashCount: sanitizedPlatforms.filter((p) => p.is_cash_payment).length,
+      electronicCount: sanitizedPlatforms.filter((p) => !p.is_cash_payment)
+        .length,
       durationMs: responseTime,
     });
 

@@ -1,4 +1,4 @@
-/* ui/styling/dashboard/platforms/platforms.module.css - SIMPLIFIÉ */
+/* ui/styling/dashboard/platforms/platforms.module.css */
 
 .container {
   background-color: var(--bgSoft);
@@ -85,11 +85,51 @@
   gap: 1rem;
 }
 
+/* ✅ NOUVEAU : Title Group pour placer h2 et badge type ensemble */
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
 .platformDetails h2 {
   font-size: 1.2rem;
   color: var(--text);
   margin: 0;
   word-break: break-word;
+}
+
+/* ✅ NOUVEAU : Badge CASH */
+.cashBadge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  background-color: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid #4caf50;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ✅ NOUVEAU : Badge Electronic */
+.electronicBadge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  background-color: rgba(93, 87, 201, 0.15);
+  color: #5d57c9;
+  border: 1px solid #5d57c9;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .statusBadge {
@@ -230,5 +270,12 @@
 
   .value {
     max-width: 55%;
+  }
+
+  /* ✅ NOUVEAU : Responsive pour badges */
+  .cashBadge,
+  .electronicBadge {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
   }
 }
