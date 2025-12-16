@@ -147,13 +147,23 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const { platformName, accountName, accountNumber, isActive } = body;
+    // ✅ MODIFIÉ : Extraire isCashPayment et description
+    const {
+      platformName,
+      accountName,
+      accountNumber,
+      isCashPayment,
+      description,
+      isActive,
+    } = body;
 
     // Sanitization
     const dataToSanitize = {
       platformName,
       accountName,
       accountNumber,
+      isCashPayment,
+      description,
       isActive,
     };
     const filteredDataToSanitize = Object.fromEntries(
@@ -169,6 +179,8 @@ export async function PUT(request, { params }) {
       platformName: sanitizedPlatformName,
       accountName: sanitizedAccountName,
       accountNumber: sanitizedAccountNumber,
+      isCashPayment: sanitizedIsCashPayment,
+      description: sanitizedDescription,
       isActive: sanitizedIsActive,
     } = sanitizedInputs;
 
@@ -179,6 +191,8 @@ export async function PUT(request, { params }) {
           platformName: sanitizedPlatformName,
           accountName: sanitizedAccountName,
           accountNumber: sanitizedAccountNumber,
+          isCashPayment: sanitizedIsCashPayment,
+          description: sanitizedDescription,
           isActive: sanitizedIsActive,
         }).filter(([_, value]) => value !== undefined),
       );
@@ -226,6 +240,13 @@ export async function PUT(request, { params }) {
         paramCounter++;
       }
 
+      // ✅ NOUVEAU : Gérer is_cash_payment
+      if (sanitizedIsCashPayment !== undefined) {
+        updateFields.push(`is_cash_payment = $${paramCounter}`);
+        updateValues.push(sanitizedIsCashPayment);
+        paramCounter++;
+      }
+
       if (sanitizedAccountName !== undefined) {
         updateFields.push(`account_name = $${paramCounter}`);
         updateValues.push(sanitizedAccountName);
@@ -238,6 +259,13 @@ export async function PUT(request, { params }) {
         paramCounter++;
       }
 
+      // ✅ NOUVEAU : Gérer description
+      if (sanitizedDescription !== undefined) {
+        updateFields.push(`description = $${paramCounter}`);
+        updateValues.push(sanitizedDescription);
+        paramCounter++;
+      }
+
       if (sanitizedIsActive !== undefined) {
         updateFields.push(`is_active = $${paramCounter}`);
         updateValues.push(sanitizedIsActive);
@@ -247,11 +275,21 @@ export async function PUT(request, { params }) {
       updateFields.push(`updated_at = NOW()`);
       updateValues.push(cleanedPlatformId);
 
+      // ✅ MODIFIÉ : Ajouter is_cash_payment et description dans RETURNING
       const queryText = `
         UPDATE admin.platforms 
         SET ${updateFields.join(', ')}
         WHERE platform_id = $${paramCounter}
-        RETURNING platform_id, platform_name, account_name, account_number, is_active, created_at, updated_at
+        RETURNING 
+          platform_id, 
+          platform_name, 
+          account_name, 
+          account_number, 
+          is_cash_payment,
+          description,
+          is_active, 
+          created_at, 
+          updated_at
       `;
 
       result = await client.query(queryText, updateValues);
@@ -279,8 +317,24 @@ export async function PUT(request, { params }) {
       const responseTime = Date.now() - startTime;
       const header = createResponseHeaders(requestId, responseTime);
 
-      logger.error('Update error', { error: updateError.message, requestId });
+      logger.error('Update error', {
+        error: updateError.message,
+        code: updateError.code,
+        requestId,
+      });
       trackDatabaseError(updateError, 'platform_update', { requestId });
+
+      // ✅ Gérer erreur contrainte CHECK
+      if (updateError.code === '23514') {
+        return NextResponse.json(
+          {
+            error:
+              'Validation error: Cash payment cannot have account information',
+            message: 'Please verify your input and try again',
+          },
+          { status: 400, header },
+        );
+      }
 
       return NextResponse.json(
         { error: 'Failed to update platform' },
@@ -294,6 +348,7 @@ export async function PUT(request, { params }) {
     logger.info('Platform updated successfully', {
       platformId: cleanedPlatformId,
       name: updatedPlatform.platform_name,
+      isCashPayment: updatedPlatform.is_cash_payment,
       durationMs: responseTime,
       userId: session.user.id,
       requestId,
@@ -307,12 +362,14 @@ export async function PUT(request, { params }) {
     await client.cleanup();
     const header = createResponseHeaders(requestId, responseTime);
 
-    // Masquer partiellement le numéro dans la réponse
+    // ✅ MODIFIÉ : Masquer numéro seulement si pas CASH
     const responseData = {
       ...updatedPlatform,
-      account_number: updatedPlatform.account_number
-        ? `${updatedPlatform.account_number.slice(0, 3)}***${updatedPlatform.account_number.slice(-2)}`
-        : '[No Number]',
+      account_number: updatedPlatform.is_cash_payment
+        ? null
+        : updatedPlatform.account_number
+          ? `${updatedPlatform.account_number.slice(0, 3)}***${updatedPlatform.account_number.slice(-2)}`
+          : '[No Number]',
     };
 
     return NextResponse.json(
@@ -323,7 +380,9 @@ export async function PUT(request, { params }) {
         meta: {
           requestId,
           timestamp: new Date().toISOString(),
-          security_note: 'Account number is partially masked for security',
+          security_note: updatedPlatform.is_cash_payment
+            ? 'Cash payment has no account information'
+            : 'Account number is partially masked for security',
         },
       },
       { status: 200, header },

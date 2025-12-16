@@ -1,4 +1,4 @@
-/* ui/styling/dashboard/platforms/add/addPlatform.module.css - SIMPLIFIÉ */
+/* ui/styling/dashboard/platforms/add/addPlatform.module.css */
 
 .addPlatformContainer {
   background-color: var(--bgSoft);
@@ -41,6 +41,54 @@
   gap: 1rem;
 }
 
+/* ✅ NOUVEAU : Styles pour checkbox */
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: var(--bg);
+  border-radius: 10px;
+  border: 2px solid var(--border);
+}
+
+.checkbox {
+  width: 1.2rem;
+  height: 1.2rem;
+  cursor: pointer;
+  accent-color: #5d57c9;
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.checkboxLabel {
+  font-size: 0.95rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+}
+
+/* ✅ NOUVEAU : Info box pour CASH */
+.infoBox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: rgba(93, 87, 201, 0.1);
+  border-left: 4px solid #5d57c9;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.infoIcon {
+  font-size: 1.2rem;
+}
+
 .inputs input {
   padding: 0.8rem 1.2rem;
   border-radius: 10px;
@@ -57,6 +105,37 @@
 }
 
 .inputs input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ✅ NOUVEAU : Style pour inputs désactivés (CASH) */
+.disabledInput {
+  background-color: rgba(128, 128, 128, 0.1) !important;
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+}
+
+/* ✅ NOUVEAU : Styles pour textarea */
+.textarea {
+  padding: 0.8rem 1.2rem;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: #5d57c9;
+}
+
+.textarea:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -106,5 +185,13 @@
 
   .addButton {
     width: 100%;
+  }
+
+  .checkboxContainer {
+    padding: 0.75rem;
+  }
+
+  .checkboxLabel {
+    font-size: 0.85rem;
   }
 }

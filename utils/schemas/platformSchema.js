@@ -3,6 +3,7 @@ import * as yup from 'yup';
 
 /**
  * Schema de validation pour l'ajout d'une plateforme de paiement
+ * ✅ SUPPORT CASH : account_name et account_number optionnels si is_cash_payment = true
  */
 export const platformAddingSchema = yup.object().shape({
   platformName: yup
@@ -22,38 +23,62 @@ export const platformAddingSchema = yup.object().shape({
     )
     .transform((value) => value?.trim()),
 
-  accountName: yup
-    .string()
-    .required('Account name is required')
-    .min(3, 'Account name must be at least 3 characters')
-    .max(255, 'Account name must not exceed 255 characters')
-    .matches(
-      /^[a-zA-Z0-9._\s-]+$/,
-      'Account name can only contain letters, numbers, spaces, and ._-',
-    )
-    .test(
-      'no-only-spaces',
-      'Account name cannot contain only spaces',
-      (value) => value && value.trim().length > 0,
-    )
-    .transform((value) => value?.trim()),
+  // ✅ NOUVEAU : is_cash_payment
+  isCashPayment: yup.boolean().default(false),
 
-  accountNumber: yup
+  // ✅ MODIFIÉ : Requis seulement si NOT cash payment
+  accountName: yup.string().when('isCashPayment', {
+    is: false,
+    then: (schema) =>
+      schema
+        .required('Account name is required for electronic platforms')
+        .min(3, 'Account name must be at least 3 characters')
+        .max(255, 'Account name must not exceed 255 characters')
+        .matches(
+          /^[a-zA-Z0-9._\s-]+$/,
+          'Account name can only contain letters, numbers, spaces, and ._-',
+        )
+        .test(
+          'no-only-spaces',
+          'Account name cannot contain only spaces',
+          (value) => value && value.trim().length > 0,
+        )
+        .transform((value) => value?.trim()),
+    otherwise: (schema) => schema.nullable().transform(() => null),
+  }),
+
+  // ✅ MODIFIÉ : Requis seulement si NOT cash payment
+  accountNumber: yup.string().when('isCashPayment', {
+    is: false,
+    then: (schema) =>
+      schema
+        .required('Account number is required for electronic platforms')
+        .min(3, 'Account number must be at least 3 characters')
+        .max(20, 'Account number must not exceed 20 characters')
+        .matches(
+          /^[0-9+]+$/,
+          'Account number can only contain digits and + sign',
+        )
+        .test(
+          'no-only-plus',
+          'Account number must contain at least one digit',
+          (value) => value && /\d/.test(value),
+        )
+        .transform((value) => value?.trim()),
+    otherwise: (schema) => schema.nullable().transform(() => null),
+  }),
+
+  // ✅ NOUVEAU : Description optionnelle
+  description: yup
     .string()
-    .required('Account number is required')
-    .min(3, 'Account number must be at least 3 characters')
-    .max(20, 'Account number must not exceed 20 characters')
-    .matches(/^[0-9+]+$/, 'Account number can only contain digits and + sign')
-    .test(
-      'no-only-plus',
-      'Account number must contain at least one digit',
-      (value) => value && /\d/.test(value),
-    )
-    .transform((value) => value?.trim()),
+    .max(500, 'Description must not exceed 500 characters')
+    .nullable()
+    .transform((value) => value?.trim() || null),
 });
 
 /**
  * Schema de validation pour la mise à jour d'une plateforme
+ * ✅ SUPPORT CASH : Validation conditionnelle basée sur is_cash_payment
  */
 export const platformUpdateSchema = yup
   .object()
@@ -74,32 +99,55 @@ export const platformUpdateSchema = yup
       )
       .transform((value) => value?.trim()),
 
-    accountName: yup
-      .string()
-      .min(3, 'Account name must be at least 3 characters')
-      .max(255, 'Account name must not exceed 255 characters')
-      .matches(
-        /^[a-zA-Z0-9._\s-]+$/,
-        'Account name can only contain letters, numbers, spaces, and ._-',
-      )
-      .test(
-        'no-only-spaces',
-        'Account name cannot contain only spaces',
-        (value) => !value || value.trim().length > 0,
-      )
-      .transform((value) => value?.trim()),
+    // ✅ NOUVEAU : is_cash_payment
+    isCashPayment: yup.boolean(),
 
-    accountNumber: yup
+    // ✅ MODIFIÉ : Validation conditionnelle
+    accountName: yup.string().when('isCashPayment', {
+      is: false,
+      then: (schema) =>
+        schema
+          .min(3, 'Account name must be at least 3 characters')
+          .max(255, 'Account name must not exceed 255 characters')
+          .matches(
+            /^[a-zA-Z0-9._\s-]+$/,
+            'Account name can only contain letters, numbers, spaces, and ._-',
+          )
+          .test(
+            'no-only-spaces',
+            'Account name cannot contain only spaces',
+            (value) => !value || value.trim().length > 0,
+          )
+          .transform((value) => value?.trim()),
+      otherwise: (schema) => schema.nullable().transform(() => null),
+    }),
+
+    // ✅ MODIFIÉ : Validation conditionnelle
+    accountNumber: yup.string().when('isCashPayment', {
+      is: false,
+      then: (schema) =>
+        schema
+          .min(3, 'Account number must be at least 3 characters')
+          .max(20, 'Account number must not exceed 20 characters')
+          .matches(
+            /^[0-9+]+$/,
+            'Account number can only contain digits and + sign',
+          )
+          .test(
+            'no-only-plus',
+            'Account number must contain at least one digit',
+            (value) => !value || /\d/.test(value),
+          )
+          .transform((value) => value?.trim()),
+      otherwise: (schema) => schema.nullable().transform(() => null),
+    }),
+
+    // ✅ NOUVEAU : Description
+    description: yup
       .string()
-      .min(3, 'Account number must be at least 3 characters')
-      .max(20, 'Account number must not exceed 20 characters')
-      .matches(/^[0-9+]+$/, 'Account number can only contain digits and + sign')
-      .test(
-        'no-only-plus',
-        'Account number must contain at least one digit',
-        (value) => !value || /\d/.test(value),
-      )
-      .transform((value) => value?.trim()),
+      .max(500, 'Description must not exceed 500 characters')
+      .nullable()
+      .transform((value) => value?.trim() || null),
 
     isActive: yup
       .boolean()

@@ -1,490 +1,388 @@
-/* ui/styling/dashboard/applications/edit/editApplication.module.css - SIMPLIFIÉ */
+/* ui/styling/dashboard/platforms/editPlatform.module.css */
 
-.editApplicationContainer {
+.container {
   background-color: var(--bgSoft);
-  padding: 20px;
+  padding: 2rem;
   border-radius: 12px;
   margin-top: 20px;
-  width: 85%;
-  position: relative;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* Container styling based on active status */
-.activeContainer {
-  border-left: 6px solid #4caf50;
-}
-
-.inactiveContainer {
-  border-left: 6px solid #f44336;
-}
-
-.backButton {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text);
-  text-decoration: none;
-  margin-bottom: 20px;
-  transition: color 0.2s;
-}
-
-.backButton:hover {
-  text-decoration: underline;
-  color: #5d57c9;
-}
-
-/* Header */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-  flex-wrap: wrap;
-  gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(128, 128, 128, 0.2);
+}
+
+.titleSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.titleIcon {
+  font-size: 1.75rem;
+  color: var(--textSoft);
 }
 
 .header h1 {
-  margin: 0;
+  font-size: 1.8rem;
   color: var(--text);
-}
-
-/* Status indicator */
-.statusIndicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 20px;
+  margin: 0;
   font-weight: 600;
-  font-size: 0.9rem;
 }
 
-.statusIndicator.active {
-  background-color: rgba(76, 175, 80, 0.1);
-  color: #4caf50;
-  border: 2px solid rgba(76, 175, 80, 0.3);
-}
-
-.statusIndicator.inactive {
-  background-color: rgba(244, 67, 54, 0.1);
-  color: #f44336;
-  border: 2px solid rgba(244, 67, 54, 0.3);
-}
-
-.statusIcon {
-  font-size: 1.1rem;
-}
-
-/* Read-only section */
-.readOnlySection {
-  background-color: var(--bg);
-  padding: 1.5rem;
-  border-radius: 10px;
-  margin-bottom: 2rem;
-  border-left: 4px solid #9e9e9e;
-}
-
-.readOnlySection h3 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 1rem 0;
-  color: var(--textSoft);
-  font-size: 1.1rem;
-}
-
-.infoIcon {
-  color: #2196f3;
-}
-
-.readOnlyGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-}
-
-.readOnlyItem {
+.platformInfo {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  align-items: flex-end;
+  gap: 0.5rem;
 }
 
-.readOnlyItem strong {
+.platformId {
+  font-size: 0.85rem;
   color: var(--textSoft);
-  font-size: 0.9rem;
+  font-family: monospace;
+  background-color: var(--bg);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }
 
-.salesCount {
-  font-size: 1.1rem;
+/* ✅ NOUVEAU : Badge CASH */
+.cashBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
   font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: #fff3e0;
+  color: #e65100;
+}
+
+.statusBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statusBadge.active {
+  background-color: #e8f5e8;
   color: #2e7d32;
-  background-color: rgba(46, 125, 50, 0.1);
-  padding: 0.3rem 0.8rem;
-  border-radius: 15px;
-  display: inline-block;
-  width: fit-content;
 }
 
-.dateValue {
-  font-family: 'Courier New', monospace;
-  color: #666;
-  font-size: 0.9rem;
-  background-color: rgba(158, 158, 158, 0.1);
-  padding: 0.3rem 0.8rem;
-  border-radius: 15px;
-  display: inline-block;
-  width: fit-content;
+.statusBadge.inactive {
+  background-color: #ffebee;
+  color: #c62828;
 }
 
-/* Form */
-.editApplicationForm {
+.successMessage {
+  background-color: #e8f5e8;
+  color: #2e7d32;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #4caf50;
+}
+
+.errorMessage {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #f44336;
+}
+
+.form {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.inputs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-}
-
-.inputGroup {
+.formGroup {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.inputs input,
-.levelSelect {
-  padding: 0.8rem 1.2rem;
-  border-radius: 10px;
-  border: 2px solid var(--border);
+.label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.input {
+  padding: 0.75rem;
+  border: 2px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
   background-color: var(--bg);
   color: var(--text);
-  transition: border-color 0.2s;
   font-size: 1rem;
 }
 
-.inputs input:focus,
-.levelSelect:focus {
+.input:focus {
   outline: none;
   border-color: #5d57c9;
+}
+
+.input:disabled {
+  background-color: rgba(128, 128, 128, 0.1);
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .inputError {
-  border-color: #f44336 !important;
-  background-color: rgba(244, 67, 54, 0.05) !important;
+  border-color: #f44336;
+}
+
+.inputError:focus {
+  border-color: #f44336;
+}
+
+/* ✅ NOUVEAU : Input désactivé pour CASH */
+.disabledInput {
+  background-color: rgba(128, 128, 128, 0.1) !important;
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
 }
 
 .fieldError {
+  color: #f44336;
+  font-size: 0.8rem;
+}
+
+.inputHint {
+  color: var(--textSoft);
+  font-size: 0.8rem;
+}
+
+.checkboxGroup {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #f44336;
-  font-size: 0.85rem;
-  font-weight: 500;
-  padding: 0.5rem 0.8rem;
-  background-color: rgba(244, 67, 54, 0.05);
-  border-radius: 6px;
-  border-left: 3px solid #f44336;
 }
 
-.errorIcon {
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-
-.levelSelect {
+.checkbox {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: #5d57c9;
   cursor: pointer;
 }
 
-.description {
-  padding: 0.8rem 1.2rem;
-  border-radius: 10px;
-  border: 2px solid var(--border);
-  background-color: var(--bg);
-  color: var(--text);
-  resize: vertical;
-  font-family: inherit;
-  font-size: 1rem;
-  transition: border-color 0.2s;
+.checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
-.description:focus {
+.checkboxLabel {
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ✅ NOUVEAU : Info box pour CASH */
+.infoBox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: rgba(93, 87, 201, 0.1);
+  border-left: 4px solid #5d57c9;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.infoIcon {
+  font-size: 1.2rem;
+}
+
+/* ✅ NOUVEAU : Textarea pour description */
+.textarea {
+  padding: 0.75rem;
+  border: 2px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+  background-color: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.textarea:focus {
   outline: none;
   border-color: #5d57c9;
 }
 
-/* Controls */
-.controlsSection {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  padding: 1.5rem;
-  background-color: var(--bg);
-  border-radius: 10px;
-  border-left: 4px solid #5d57c9;
-}
-
-.controlsSection h4 {
-  margin: 0 0 1rem 0;
-  color: var(--textSoft);
-  font-size: 1rem;
-}
-
-.radioButtons {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.radioLabel {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: background-color 0.2s;
-}
-
-.radioLabel:hover {
-  background-color: rgba(93, 87, 201, 0.05);
-}
-
-.radioLabel input[type='radio'] {
-  width: 18px;
-  height: 18px;
-  accent-color: #5d57c9;
-}
-
-.radioLabel span {
-  font-size: 1rem;
-  color: var(--text);
-}
-
-.radioGroupError {
-  border: 2px solid rgba(244, 67, 54, 0.3);
-  border-radius: 8px;
-  padding: 0.5rem;
-  background-color: rgba(244, 67, 54, 0.05);
-}
-
-/* Active toggle */
-.activeToggle {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.checkboxLabel {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  cursor: pointer;
-  padding: 0.8rem;
-  border-radius: 8px;
-  transition: background-color 0.2s;
-}
-
-.checkboxLabel:hover {
-  background-color: rgba(93, 87, 201, 0.05);
-}
-
-.activeCheckbox {
-  width: 20px;
-  height: 20px;
-  accent-color: #4caf50;
-}
-
-.checkboxText {
-  font-size: 1rem;
-  font-weight: 600;
-  transition: color 0.2s;
-}
-
-.activeText {
-  color: #4caf50;
-}
-
-.inactiveText {
-  color: #f44336;
-}
-
-.checkboxGroupError {
-  border: 2px solid rgba(244, 67, 54, 0.3);
-  border-radius: 8px;
-  background-color: rgba(244, 67, 54, 0.05);
-}
-
-/* Images */
-.imageSection {
-  background-color: var(--bg);
-  padding: 1.5rem;
-  border-radius: 10px;
-  border-left: 4px solid #ff9800;
-}
-
-.imageSection h4 {
-  margin: 0 0 1rem 0;
-  color: var(--textSoft);
-  font-size: 1rem;
-}
-
-.addImage {
-  padding: 0.8rem 1.5rem;
-  background-color: #5d57c9;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 600;
-  transition: background-color 0.2s;
-  margin-bottom: 1rem;
-}
-
-.addImage:hover:not(:disabled) {
-  background-color: #6b66d6;
-}
-
-.addImage:disabled {
-  background-color: #9e9e9e;
+.textarea:disabled {
+  background-color: rgba(128, 128, 128, 0.1);
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
-.images {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+.platformDetails {
+  background-color: var(--bg);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.2);
   margin-top: 1rem;
 }
 
-.imageContainer {
-  position: relative;
-  width: 100%;
-  height: 150px;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: transform 0.2s;
-}
-
-.imageContainer:hover {
-  transform: scale(1.02);
-}
-
-.image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.removeImage {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 0.4rem 0.8rem;
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 15px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 600;
-  transition: background-color 0.2s;
-}
-
-.removeImage:hover:not(:disabled) {
-  background-color: #e53935;
-}
-
-.removeImage:disabled {
-  background-color: #9e9e9e;
-  cursor: not-allowed;
-}
-
-.imageWarning {
-  color: #f44336;
-  font-style: italic;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  padding: 0.5rem 0.8rem;
-  background-color: rgba(244, 67, 54, 0.05);
-  border-radius: 6px;
-  border-left: 3px solid #f44336;
-}
-
-/* Save button */
-.saveButton {
-  padding: 1rem 2rem;
-  background-color: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+.platformDetails h3 {
+  margin: 0 0 1rem 0;
+  color: var(--text);
   font-size: 1.1rem;
   font-weight: 600;
-  align-self: flex-start;
-  transition: background-color 0.2s;
-  margin-top: 1rem;
 }
 
-.saveButton:hover:not(:disabled) {
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.detailItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.detailItem:last-child {
+  border-bottom: none;
+}
+
+.detailLabel {
+  font-size: 0.85rem;
+  color: var(--textSoft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detailValue {
+  font-size: 0.9rem;
+  color: var(--text);
+  text-align: right;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.saveButton {
+  background-color: #4caf50;
+  color: white;
+}
+
+.saveButton:not(:disabled):hover {
   background-color: #45a049;
 }
 
-.saveButton:disabled {
-  background-color: #9e9e9e;
-  cursor: not-allowed;
+.resetButton {
+  background-color: #ff9800;
+  color: white;
 }
 
-/* Error message */
-.errorMessage {
-  background-color: rgba(244, 67, 54, 0.1);
-  color: #f44336;
-  font-size: 0.9rem;
-  padding: 1rem 1.2rem;
-  border-radius: 8px;
-  border-left: 4px solid #f44336;
-  margin-bottom: 1rem;
+.resetButton:not(:disabled):hover {
+  background-color: #f57c00;
 }
 
-.errorMessage::before {
-  content: '⚠️';
-  margin-right: 0.5rem;
+.cancelButton {
+  background-color: #f44336;
+  color: white;
 }
 
-/* Responsive */
+.cancelButton:not(:disabled):hover {
+  background-color: #e53935;
+}
+
 @media (max-width: 768px) {
-  .editApplicationContainer {
-    width: 95%;
-    padding: 15px;
+  .container {
+    padding: 1rem;
+    margin: 10px;
   }
 
   .header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 1rem;
   }
 
-  .inputs {
+  .platformInfo {
+    align-items: flex-start;
+  }
+
+  .buttonGroup {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .button {
+    justify-content: center;
+  }
+
+  .detailsGrid {
     grid-template-columns: 1fr;
   }
 
-  .controlsSection {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+  .detailItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
   }
 
-  .readOnlyGrid {
-    grid-template-columns: 1fr;
+  .detailValue {
+    text-align: left;
+  }
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 1.5rem;
   }
 
-  .images {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  .titleIcon {
+    font-size: 1.5rem;
   }
 
-  .saveButton {
-    width: 100%;
+  .container {
+    margin: 5px;
   }
 }

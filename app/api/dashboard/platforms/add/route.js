@@ -113,19 +113,30 @@ export async function POST(request) {
       );
     }
 
-    const { platformName, accountName, accountNumber } = body;
+    // ✅ MODIFIÉ : Extraire isCashPayment et description
+    const {
+      platformName,
+      accountName,
+      accountNumber,
+      isCashPayment,
+      description,
+    } = body;
 
     // Sanitization
     const sanitizedInputs = sanitizePlatformInputsStrict({
       platformName,
       accountName,
       accountNumber,
+      isCashPayment,
+      description,
     });
 
     const {
       platformName: sanitizedPlatformName,
       accountName: sanitizedAccountName,
       accountNumber: sanitizedAccountNumber,
+      isCashPayment: sanitizedIsCashPayment,
+      description: sanitizedDescription,
     } = sanitizedInputs;
 
     // Validation Yup
@@ -135,6 +146,8 @@ export async function POST(request) {
           platformName: sanitizedPlatformName,
           accountName: sanitizedAccountName,
           accountNumber: sanitizedAccountNumber,
+          isCashPayment: sanitizedIsCashPayment,
+          description: sanitizedDescription,
         },
         { abortEarly: false },
       );
@@ -165,26 +178,41 @@ export async function POST(request) {
       return NextResponse.json({ errors }, { status: 400, header });
     }
 
-    // Vérification champs requis
-    if (
-      !sanitizedPlatformName ||
-      !sanitizedAccountName ||
-      !sanitizedAccountNumber
-    ) {
+    // ✅ MODIFIÉ : Vérification champs requis (uniquement platformName)
+    if (!sanitizedPlatformName) {
       await client.cleanup();
 
       const responseTime = Date.now() - startTime;
       const header = createResponseHeaders(requestId, responseTime);
 
-      logger.warn('Missing required fields after sanitization', { requestId });
+      logger.warn('Missing platform name after sanitization', { requestId });
 
       return NextResponse.json(
-        {
-          message:
-            'Platform name, account name, and account number are required',
-        },
+        { message: 'Platform name is required' },
         { status: 400, header },
       );
+    }
+
+    // ✅ MODIFIÉ : Vérification champs requis pour plateformes électroniques
+    if (!sanitizedIsCashPayment) {
+      if (!sanitizedAccountName || !sanitizedAccountNumber) {
+        await client.cleanup();
+
+        const responseTime = Date.now() - startTime;
+        const header = createResponseHeaders(requestId, responseTime);
+
+        logger.warn('Missing account info for electronic platform', {
+          requestId,
+        });
+
+        return NextResponse.json(
+          {
+            message:
+              'Account name and account number are required for electronic platforms',
+          },
+          { status: 400, header },
+        );
+      }
     }
 
     // Vérification unicité (nom de plateforme)
@@ -239,22 +267,33 @@ export async function POST(request) {
       );
     }
 
-    // Insertion
+    // ✅ MODIFIÉ : Insertion avec is_cash_payment et description
     let result;
     try {
       const queryText = `
         INSERT INTO admin.platforms (
           platform_name,
           account_name,
-          account_number
-        ) VALUES ($1, $2, $3)
-        RETURNING platform_id, platform_name, account_name, account_number, created_at
+          account_number,
+          is_cash_payment,
+          description
+        ) VALUES ($1, $2, $3, $4, $5)
+        RETURNING 
+          platform_id, 
+          platform_name, 
+          account_name, 
+          account_number, 
+          is_cash_payment,
+          description,
+          created_at
       `;
 
       const values = [
         sanitizedPlatformName,
         sanitizedAccountName,
         sanitizedAccountNumber,
+        sanitizedIsCashPayment,
+        sanitizedDescription,
       ];
 
       result = await client.query(queryText, values);
@@ -266,10 +305,23 @@ export async function POST(request) {
 
       logger.error('Platform insertion error', {
         error: insertError.message,
+        code: insertError.code,
         requestId,
       });
 
       trackDatabaseError(insertError, 'insertion', { requestId });
+
+      // ✅ Gérer erreur de contrainte CHECK
+      if (insertError.code === '23514') {
+        return NextResponse.json(
+          {
+            error:
+              'Validation error: Cash payment cannot have account information',
+            message: 'Please verify your input and try again',
+          },
+          { status: 400, header },
+        );
+      }
 
       return NextResponse.json(
         { error: 'Failed to add platform to database' },
@@ -283,6 +335,7 @@ export async function POST(request) {
     logger.info('Platform added successfully', {
       newPlatformId: newPlatformData.platform_id,
       platformName: sanitizedPlatformName,
+      isCashPayment: sanitizedIsCashPayment,
       durationMs: responseTime,
       userId: session.user.id,
       requestId,
@@ -291,6 +344,7 @@ export async function POST(request) {
     trackDatabase('platform_added_successfully', {
       newPlatformId: newPlatformData.platform_id,
       platformName: sanitizedPlatformName,
+      isCashPayment: sanitizedIsCashPayment,
       userId: session.user.id,
     });
 
@@ -306,6 +360,8 @@ export async function POST(request) {
           name: newPlatformData.platform_name,
           accountName: newPlatformData.account_name,
           accountNumber: newPlatformData.account_number,
+          isCashPayment: newPlatformData.is_cash_payment,
+          description: newPlatformData.description,
           createdAt: newPlatformData.created_at,
         },
         meta: {

@@ -19,20 +19,40 @@ export default function AddPlatform() {
   const [platformName, setPlatformName] = useState('');
   const [accountName, setAccountName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
+  const [isCashPayment, setIsCashPayment] = useState(false); // ✅ NOUVEAU
+  const [description, setDescription] = useState(''); // ✅ NOUVEAU
   const [errorMessage, setErrorMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ NOUVEAU : Gérer le changement de isCashPayment
+  const handleCashPaymentChange = (e) => {
+    const isChecked = e.target.checked;
+    setIsCashPayment(isChecked);
+
+    // Si CASH est coché, vider les champs account et mettre description par défaut
+    if (isChecked) {
+      setAccountName('');
+      setAccountNumber('');
+      setDescription('Paiement en espèces lors de la récupération');
+    } else {
+      setDescription('');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage('');
 
-    trackForm('add_platform_submit_started', {});
+    trackForm('add_platform_submit_started', { isCashPayment });
 
+    // ✅ MODIFIÉ : Inclure isCashPayment et description
     const formData = {
       platformName,
-      accountName,
-      accountNumber,
+      accountName: isCashPayment ? null : accountName,
+      accountNumber: isCashPayment ? null : accountNumber,
+      isCashPayment,
+      description,
     };
 
     try {
@@ -54,6 +74,7 @@ export default function AddPlatform() {
       if (data.platform) {
         trackForm('add_platform_successful', {
           platformId: data.platform.id,
+          isCashPayment,
         });
 
         router.push('/dashboard/platforms?added=true');
@@ -100,10 +121,36 @@ export default function AddPlatform() {
         {errorMessage && <p className={styles.errorMessage}>{errorMessage}</p>}
 
         <div className={styles.inputs}>
+          {/* ✅ NOUVEAU : Checkbox pour Cash Payment */}
+          <div className={styles.checkboxContainer}>
+            <input
+              type="checkbox"
+              id="isCashPayment"
+              name="isCashPayment"
+              checked={isCashPayment}
+              onChange={handleCashPaymentChange}
+              disabled={isSubmitting}
+              className={styles.checkbox}
+            />
+            <label htmlFor="isCashPayment" className={styles.checkboxLabel}>
+              Cash Payment (no account information required)
+            </label>
+          </div>
+
+          {/* ✅ NOUVEAU : Afficher info si CASH */}
+          {isCashPayment && (
+            <div className={styles.infoBox}>
+              <span className={styles.infoIcon}>ℹ️</span>
+              <span>
+                Cash payment selected. Account name and number are not required.
+              </span>
+            </div>
+          )}
+
           <input
             type="text"
             name="platformName"
-            placeholder="Platform Name (e.g., Orange Money, Wave)"
+            placeholder="Platform Name (e.g., Orange Money, CASH)"
             value={platformName}
             onChange={(e) => setPlatformName(e.target.value)}
             maxLength="50"
@@ -111,17 +158,20 @@ export default function AddPlatform() {
             disabled={isSubmitting}
           />
 
+          {/* ✅ MODIFIÉ : Désactiver si CASH */}
           <input
             type="text"
             name="accountName"
             placeholder="Account Name (e.g., BENEW SARL)"
             value={accountName}
             onChange={(e) => setAccountName(e.target.value)}
-            maxLength="50"
-            required
-            disabled={isSubmitting}
+            maxLength="255"
+            required={!isCashPayment}
+            disabled={isSubmitting || isCashPayment}
+            className={isCashPayment ? styles.disabledInput : ''}
           />
 
+          {/* ✅ MODIFIÉ : Désactiver si CASH */}
           <input
             type="text"
             name="accountNumber"
@@ -129,8 +179,21 @@ export default function AddPlatform() {
             value={accountNumber}
             onChange={(e) => setAccountNumber(e.target.value)}
             maxLength="20"
-            required
+            required={!isCashPayment}
+            disabled={isSubmitting || isCashPayment}
+            className={isCashPayment ? styles.disabledInput : ''}
+          />
+
+          {/* ✅ NOUVEAU : Champ Description */}
+          <textarea
+            name="description"
+            placeholder="Description (optional)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength="500"
             disabled={isSubmitting}
+            className={styles.textarea}
+            rows="3"
           />
         </div>
 

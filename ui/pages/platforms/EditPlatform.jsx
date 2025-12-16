@@ -17,6 +17,8 @@ const EditPlatform = ({ platform }) => {
     platformName: '',
     accountName: '',
     accountNumber: '',
+    isCashPayment: false, // ✅ NOUVEAU
+    description: '', // ✅ NOUVEAU
     isActive: true,
   });
 
@@ -32,10 +34,27 @@ const EditPlatform = ({ platform }) => {
         platformName: platform.platform_name || '',
         accountName: platform.account_name || '',
         accountNumber: platform.account_number || '',
+        isCashPayment: platform.is_cash_payment || false, // ✅ NOUVEAU
+        description: platform.description || '', // ✅ NOUVEAU
         isActive: platform.is_active !== undefined ? platform.is_active : true,
       });
     }
   }, [platform]);
+
+  // ✅ NOUVEAU : Gérer le changement de isCashPayment
+  const handleCashPaymentChange = (e) => {
+    const isChecked = e.target.checked;
+    setFormData((prev) => ({
+      ...prev,
+      isCashPayment: isChecked,
+      accountName: isChecked ? '' : prev.accountName,
+      accountNumber: isChecked ? '' : prev.accountNumber,
+      description: isChecked
+        ? 'Paiement en espèces lors de la récupération'
+        : prev.description,
+    }));
+    setHasChanges(true);
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -62,16 +81,22 @@ const EditPlatform = ({ platform }) => {
       newErrors.platformName = 'Platform name must be at least 3 characters';
     }
 
-    if (!formData.accountName.trim()) {
-      newErrors.accountName = 'Account name is required';
-    } else if (formData.accountName.trim().length < 3) {
-      newErrors.accountName = 'Account name must be at least 3 characters';
-    }
+    // ✅ MODIFIÉ : Valider account_name seulement si NOT cash
+    if (!formData.isCashPayment) {
+      if (!formData.accountName.trim()) {
+        newErrors.accountName =
+          'Account name is required for electronic platforms';
+      } else if (formData.accountName.trim().length < 3) {
+        newErrors.accountName = 'Account name must be at least 3 characters';
+      }
 
-    if (!formData.accountNumber.trim()) {
-      newErrors.accountNumber = 'Account number is required';
-    } else if (formData.accountNumber.trim().length < 3) {
-      newErrors.accountNumber = 'Account number must be at least 3 characters';
+      if (!formData.accountNumber.trim()) {
+        newErrors.accountNumber =
+          'Account number is required for electronic platforms';
+      } else if (formData.accountNumber.trim().length < 3) {
+        newErrors.accountNumber =
+          'Account number must be at least 3 characters';
+      }
     }
 
     setErrors(newErrors);
@@ -98,6 +123,7 @@ const EditPlatform = ({ platform }) => {
 
     trackForm('edit_platform_submit_started', {
       platformId: platform.platform_id,
+      isCashPayment: formData.isCashPayment,
     });
 
     try {
@@ -108,8 +134,14 @@ const EditPlatform = ({ platform }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             platformName: formData.platformName.trim(),
-            accountName: formData.accountName.trim(),
-            accountNumber: formData.accountNumber.trim(),
+            accountName: formData.isCashPayment
+              ? null
+              : formData.accountName.trim(),
+            accountNumber: formData.isCashPayment
+              ? null
+              : formData.accountNumber.trim(),
+            isCashPayment: formData.isCashPayment, // ✅ NOUVEAU
+            description: formData.description.trim() || null, // ✅ NOUVEAU
             isActive: formData.isActive,
           }),
         },
@@ -173,6 +205,8 @@ const EditPlatform = ({ platform }) => {
         platformName: platform.platform_name || '',
         accountName: platform.account_name || '',
         accountNumber: platform.account_number || '',
+        isCashPayment: platform.is_cash_payment || false,
+        description: platform.description || '',
         isActive: platform.is_active !== undefined ? platform.is_active : true,
       });
       setErrors({});
@@ -201,6 +235,10 @@ const EditPlatform = ({ platform }) => {
         </div>
         <div className={styles.platformInfo}>
           <span className={styles.platformId}>ID: {platform.platform_id}</span>
+          {/* ✅ NOUVEAU : Badge CASH */}
+          {platform.is_cash_payment && (
+            <span className={styles.cashBadge}>💵 CASH</span>
+          )}
           <span
             className={`${styles.statusBadge} ${platform.is_active ? styles.active : styles.inactive}`}
           >
@@ -218,6 +256,37 @@ const EditPlatform = ({ platform }) => {
       )}
 
       <form onSubmit={handleSubmit} className={styles.form}>
+        {/* ✅ NOUVEAU : Checkbox Cash Payment */}
+        <div className={styles.formGroup}>
+          <div className={styles.checkboxGroup}>
+            <input
+              type="checkbox"
+              id="isCashPayment"
+              name="isCashPayment"
+              checked={formData.isCashPayment}
+              onChange={handleCashPaymentChange}
+              className={styles.checkbox}
+              disabled={loading}
+            />
+            <label htmlFor="isCashPayment" className={styles.checkboxLabel}>
+              Cash Payment (no account information required)
+            </label>
+          </div>
+          <span className={styles.inputHint}>
+            Enable this for cash-on-delivery payments
+          </span>
+        </div>
+
+        {/* ✅ NOUVEAU : Info box si CASH */}
+        {formData.isCashPayment && (
+          <div className={styles.infoBox}>
+            <span className={styles.infoIcon}>ℹ️</span>
+            <span>
+              Cash payment selected. Account name and number are not required.
+            </span>
+          </div>
+        )}
+
         <div className={styles.formGroup}>
           <label htmlFor="platformName" className={styles.label}>
             Platform Name *
@@ -229,7 +298,7 @@ const EditPlatform = ({ platform }) => {
             value={formData.platformName}
             onChange={handleInputChange}
             className={`${styles.input} ${errors.platformName ? styles.inputError : ''}`}
-            placeholder="e.g., Orange Money"
+            placeholder="e.g., Orange Money, CASH"
             disabled={loading}
           />
           {errors.platformName && (
@@ -237,9 +306,10 @@ const EditPlatform = ({ platform }) => {
           )}
         </div>
 
+        {/* ✅ MODIFIÉ : Désactiver si CASH */}
         <div className={styles.formGroup}>
           <label htmlFor="accountName" className={styles.label}>
-            Account Name *
+            Account Name {!formData.isCashPayment && '*'}
           </label>
           <input
             type="text"
@@ -247,9 +317,9 @@ const EditPlatform = ({ platform }) => {
             name="accountName"
             value={formData.accountName}
             onChange={handleInputChange}
-            className={`${styles.input} ${errors.accountName ? styles.inputError : ''}`}
+            className={`${styles.input} ${errors.accountName ? styles.inputError : ''} ${formData.isCashPayment ? styles.disabledInput : ''}`}
             placeholder="e.g., BENEW SARL"
-            disabled={loading}
+            disabled={loading || formData.isCashPayment}
           />
           {errors.accountName && (
             <span className={styles.fieldError}>{errors.accountName}</span>
@@ -259,9 +329,10 @@ const EditPlatform = ({ platform }) => {
           </span>
         </div>
 
+        {/* ✅ MODIFIÉ : Désactiver si CASH */}
         <div className={styles.formGroup}>
           <label htmlFor="accountNumber" className={styles.label}>
-            Account Number *
+            Account Number {!formData.isCashPayment && '*'}
           </label>
           <input
             type="text"
@@ -269,15 +340,35 @@ const EditPlatform = ({ platform }) => {
             name="accountNumber"
             value={formData.accountNumber}
             onChange={handleInputChange}
-            className={`${styles.input} ${errors.accountNumber ? styles.inputError : ''}`}
+            className={`${styles.input} ${errors.accountNumber ? styles.inputError : ''} ${formData.isCashPayment ? styles.disabledInput : ''}`}
             placeholder="e.g., 77123456"
-            disabled={loading}
+            disabled={loading || formData.isCashPayment}
           />
           {errors.accountNumber && (
             <span className={styles.fieldError}>{errors.accountNumber}</span>
           )}
           <span className={styles.inputHint}>
             Phone number or alphanumeric code
+          </span>
+        </div>
+
+        {/* ✅ NOUVEAU : Champ Description */}
+        <div className={styles.formGroup}>
+          <label htmlFor="description" className={styles.label}>
+            Description (optional)
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            className={styles.textarea}
+            placeholder="Additional information about this platform"
+            disabled={loading}
+            rows="3"
+          />
+          <span className={styles.inputHint}>
+            Optional description or notes
           </span>
         </div>
 
@@ -304,6 +395,15 @@ const EditPlatform = ({ platform }) => {
         <div className={styles.platformDetails}>
           <h3>Platform Information</h3>
           <div className={styles.detailsGrid}>
+            {/* ✅ NOUVEAU : Afficher type */}
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}>Type:</span>
+              <span className={styles.detailValue}>
+                {platform.is_cash_payment
+                  ? '💵 Cash Payment'
+                  : '💳 Electronic Platform'}
+              </span>
+            </div>
             <div className={styles.detailItem}>
               <span className={styles.detailLabel}>Created:</span>
               <span className={styles.detailValue}>

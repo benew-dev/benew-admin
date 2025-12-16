@@ -54,7 +54,7 @@ async function getPlatformForEdit(platformId) {
       return null;
     }
 
-    // Requête SQL
+    // ✅ MODIFIÉ : Requête SQL avec is_cash_payment et description
     let result;
     try {
       const platformQuery = `
@@ -63,6 +63,8 @@ async function getPlatformForEdit(platformId) {
           platform_name,
           account_name,
           account_number,
+          is_cash_payment,
+          description,
           created_at,
           updated_at,
           is_active
@@ -95,6 +97,7 @@ async function getPlatformForEdit(platformId) {
     logger.info('Platform fetched successfully', {
       platformId: cleanedPlatformId,
       name: platform.platform_name,
+      isCashPayment: platform.is_cash_payment,
       durationMs: responseTime,
       requestId,
     });
@@ -105,11 +108,14 @@ async function getPlatformForEdit(platformId) {
 
     await client.cleanup();
 
+    // ✅ MODIFIÉ : Retourner is_cash_payment et description
     return {
       platform_id: platform.platform_id,
       platform_name: platform.platform_name || '[No Name]',
-      account_name: platform.account_name || '[No Account Name]',
-      account_number: platform.account_number || '[No Number]',
+      account_name: platform.account_name || null,
+      account_number: platform.account_number || null,
+      is_cash_payment: Boolean(platform.is_cash_payment),
+      description: platform.description || null,
       created_at: platform.created_at,
       updated_at: platform.updated_at,
       is_active: Boolean(platform.is_active),
@@ -144,6 +150,7 @@ export default async function EditPlatformPage({ params }) {
     logger.info('Edit platform page rendering', {
       platformId: platform.platform_id,
       name: platform.platform_name,
+      isCashPayment: platform.is_cash_payment,
       userId: session.user.id,
     });
 
