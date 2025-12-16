@@ -29,6 +29,7 @@ async function getPlatformForEdit(platformId) {
         { id: platformId },
         { abortEarly: false },
       );
+      // eslint-disable-next-line no-unused-vars
     } catch (validationError) {
       logger.warn('Invalid platform ID', { requestId, platformId });
       trackValidation('invalid_platform_id_page', { platformId }, 'warning');
