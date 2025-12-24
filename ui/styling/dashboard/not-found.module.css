@@ -1,0 +1,313 @@
+/* ui/styling/dashboard/not-found.module.css - DASHBOARD 404 STYLES */
+
+.notFoundContainer {
+  min-height: calc(100vh - 80px); /* Account for navbar/sidebar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background-color: var(--bg);
+}
+
+.notFoundCard {
+  max-width: 900px;
+  width: 100%;
+  background-color: var(--bgSoft);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 404 Icon/Number */
+.notFoundIcon {
+  font-size: 6rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 1rem;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.1);
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Title */
+.notFoundTitle {
+  color: var(--text);
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Description */
+.notFoundDescription {
+  color: var(--textSoft);
+  font-size: 1.063rem;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+/* Context Notice */
+.contextNotice {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 2.5rem;
+  text-align: left;
+}
+
+.contextNotice p {
+  color: #60a5fa;
+  font-size: 1rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.contextNotice strong {
+  font-weight: 600;
+}
+
+.contextNotice ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.contextNotice li {
+  color: var(--textSoft);
+  font-size: 0.938rem;
+  line-height: 1.6;
+  padding-left: 1.5rem;
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.contextNotice li::before {
+  content: '•';
+  position: absolute;
+  left: 0.5rem;
+  color: #60a5fa;
+  font-weight: bold;
+}
+
+.contextNotice li:last-child {
+  margin-bottom: 0;
+}
+
+/* Quick Navigation Section */
+.quickNav {
+  margin-bottom: 2rem;
+}
+
+.quickNavTitle {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.navGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.navCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.navCard:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.navCard:active {
+  transform: translateY(0);
+}
+
+.navIcon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.navLabel {
+  color: var(--text);
+  font-size: 0.938rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Support Footer */
+.supportFooter {
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 1rem;
+}
+
+.supportText {
+  color: var(--textSoft);
+  font-size: 0.938rem;
+}
+
+.supportLink {
+  color: #60a5fa;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.supportLink:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .notFoundContainer {
+    padding: 1rem;
+  }
+
+  .notFoundCard {
+    padding: 2rem 1.5rem;
+  }
+
+  .notFoundIcon {
+    font-size: 4.5rem;
+  }
+
+  .notFoundTitle {
+    font-size: 1.75rem;
+  }
+
+  .notFoundDescription {
+    font-size: 1rem;
+  }
+
+  .contextNotice {
+    padding: 1rem;
+  }
+
+  .contextNotice p {
+    font-size: 0.938rem;
+  }
+
+  .contextNotice li {
+    font-size: 0.875rem;
+  }
+
+  .navGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .navCard {
+    padding: 1rem 0.75rem;
+  }
+
+  .navIcon {
+    font-size: 1.75rem;
+  }
+
+  .navLabel {
+    font-size: 0.875rem;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .navGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Accessibility - Focus States */
+.navCard:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.navCard:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.supportLink:focus {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.supportLink:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Reduced Motion (Accessibility) */
+@media (prefers-reduced-motion: reduce) {
+  .notFoundIcon {
+    animation: none;
+  }
+
+  .navCard:hover {
+    transform: none;
+  }
+}
+
+/* Alternative: Animated Background Pattern (optional) */
+/*
+.notFoundContainer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(
+    circle at 20% 50%,
+    rgba(255, 255, 255, 0.03) 0%,
+    transparent 50%
+  ),
+  radial-gradient(
+    circle at 80% 80%,
+    rgba(255, 255, 255, 0.03) 0%,
+    transparent 50%
+  );
+  pointer-events: none;
+  animation: float 20s ease-in-out infinite;
+}
+*/
+
+/* Loading State for Navigation Cards */
+.navCard:active .navIcon {
+  animation: bounce 0.3s ease-in-out;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.9);
+  }
+}
