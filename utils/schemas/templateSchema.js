@@ -54,7 +54,9 @@ export const templateAddingSchema = yup
 
     templateHasWeb: yup.boolean().required('Web availability is required'),
 
-    templateHasMobile: yup.boolean(),
+    templateHasMobile: yup
+      .boolean()
+      .required('Mobile availability is required'),
   })
   .test(
     'at-least-one-platform',
