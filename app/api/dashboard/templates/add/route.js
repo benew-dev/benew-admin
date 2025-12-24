@@ -127,6 +127,7 @@ export async function POST(request) {
         { abortEarly: false },
       );
     } catch (validationError) {
+      console.log('validationError', validationError);
       const responseTime = Date.now() - startTime;
       const headers = createResponseHeaders(requestId, responseTime);
 
