@@ -30,6 +30,7 @@ import '@/styling/global-error.css';
  * IMPORTANT: This is a last resort fallback.
  * Most errors should be caught by route-level error.jsx files.
  */
+// eslint-disable-next-line no-unused-vars
 export default function GlobalError({ error, reset }) {
   useEffect(() => {
     // ✅ Report to Sentry with CRITICAL priority
