@@ -1,4 +1,4 @@
-// app/dashboard/templates/[id]/page.jsx
+// app/dashboard/templates/[id]/page.jsx - UPDATED WITH notFound()
 import { redirect, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
@@ -22,6 +22,10 @@ export const metadata = {
   robots: 'noindex, nofollow',
 };
 
+/**
+ * Vérifie l'authentification utilisateur
+ * @returns {Promise<Object|null>} Session ou null
+ */
 async function checkAuth() {
   try {
     const session = await auth.api.getSession({
@@ -52,6 +56,11 @@ async function checkAuth() {
   }
 }
 
+/**
+ * Récupère un template depuis la base de données
+ * @param {string} templateId - UUID du template
+ * @returns {Promise<Object|null>} Template ou null si non trouvé
+ */
 async function getTemplateFromDatabase(templateId) {
   let client;
   const startTime = Date.now();
@@ -68,6 +77,7 @@ async function getTemplateFromDatabase(templateId) {
   });
 
   try {
+    // ===== 1. VALIDATION ID =====
     try {
       await templateIdSchema.validate(
         { id: templateId },
@@ -88,18 +98,23 @@ async function getTemplateFromDatabase(templateId) {
         'warning',
       );
 
+      // ✅ Retourne null pour déclencher notFound()
       return null;
     }
 
+    // ===== 2. NETTOYAGE UUID =====
     const cleanedTemplateId = cleanUUID(templateId);
     if (!cleanedTemplateId) {
       logger.warn('Template ID cleaning failed', {
         requestId,
         providedId: templateId,
       });
+
+      // ✅ Retourne null pour déclencher notFound()
       return null;
     }
 
+    // ===== 3. CONNEXION DB =====
     try {
       client = await getClient();
     } catch (dbConnectionError) {
@@ -114,9 +129,11 @@ async function getTemplateFromDatabase(templateId) {
         templateId: cleanedTemplateId,
       });
 
-      return null;
+      // ✅ Erreur connexion DB → error.jsx (pas notFound)
+      throw dbConnectionError;
     }
 
+    // ===== 4. QUERY TEMPLATE =====
     let result;
     try {
       const templateQuery = `
@@ -148,11 +165,14 @@ async function getTemplateFromDatabase(templateId) {
       });
 
       await client.cleanup();
-      return null;
+
+      // ✅ Erreur SQL → error.jsx (pas notFound)
+      throw queryError;
     }
 
+    // ===== 5. VÉRIFICATION RÉSULTAT =====
     if (result.rows.length === 0) {
-      logger.warn('Template not found', {
+      logger.warn('Template not found in database', {
         requestId,
         templateId: cleanedTemplateId,
       });
@@ -166,9 +186,12 @@ async function getTemplateFromDatabase(templateId) {
       );
 
       await client.cleanup();
+
+      // ✅ Template inexistant → notFound()
       return null;
     }
 
+    // ===== 6. SANITIZATION =====
     const template = result.rows[0];
     const sanitizedTemplate = {
       template_id: template.template_id,
@@ -177,7 +200,7 @@ async function getTemplateFromDatabase(templateId) {
       template_has_web: Boolean(template.template_has_web),
       template_has_mobile: Boolean(template.template_has_mobile),
       template_added: template.template_added,
-      sales_count: parseInt(template.sales_count) || 0,
+      sales_count: parseInt(template.sales_count, 10) || 0,
       is_active: Boolean(template.is_active),
       updated_at: template.updated_at,
     };
@@ -219,26 +242,40 @@ async function getTemplateFromDatabase(templateId) {
 
     if (client) await client.cleanup();
 
-    return null;
+    // ✅ Erreur générale → error.jsx
+    throw error;
   }
 }
 
+/**
+ * Page de modification d'un template
+ */
 export default async function EditTemplatePage({ params }) {
   try {
+    // ===== 1. RÉCUPÉRATION ID =====
     const { id } = await params;
 
+    // ===== 2. VÉRIFICATION AUTH =====
     const session = await checkAuth();
 
     if (!session) {
       redirect('/login');
     }
 
+    // ===== 3. RÉCUPÉRATION TEMPLATE =====
     const template = await getTemplateFromDatabase(id);
 
+    // ✅ Si null → déclencher not-found.jsx
     if (!template) {
+      logger.info('Template not found, triggering notFound()', {
+        templateId: id,
+        userId: session.user?.id,
+      });
+
       notFound();
     }
 
+    // ===== 4. RENDER =====
     logger.info('Template edit page rendering', {
       templateId: template.template_id,
       templateName: template.template_name,
@@ -247,6 +284,7 @@ export default async function EditTemplatePage({ params }) {
 
     return <EditTemplate template={template} />;
   } catch (error) {
+    // ✅ Gestion des redirects Next.js
     if (
       error.message?.includes('NEXT_REDIRECT') ||
       error.message?.includes('NEXT_NOT_FOUND')
@@ -254,12 +292,17 @@ export default async function EditTemplatePage({ params }) {
       throw error;
     }
 
-    logger.error('Template edit page error', { error: error.message });
+    // ✅ Toute autre erreur → error.jsx
+    logger.error('Template edit page error', {
+      error: error.message,
+      stack: error.stack,
+    });
 
     trackDatabaseError(error, 'page_render', {
       critical: 'true',
     });
 
-    notFound();
+    // Re-throw pour déclencher error.jsx
+    throw error;
   }
 }

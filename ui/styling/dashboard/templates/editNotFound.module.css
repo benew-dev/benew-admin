@@ -1,0 +1,321 @@
+/* ui/styling/dashboard/templates/editNotFound.module.css - TEMPLATE NOT FOUND STYLES */
+
+.notFoundContainer {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background-color: var(--bg);
+}
+
+.notFoundCard {
+  max-width: 800px;
+  width: 100%;
+  background-color: var(--bgSoft);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 404 Icon */
+.notFoundIcon {
+  font-size: 5rem;
+  margin-bottom: 1.5rem;
+  animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+/* Title */
+.notFoundTitle {
+  color: var(--text);
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  letter-spacing: -0.025em;
+}
+
+/* Description */
+.notFoundDescription {
+  color: var(--textSoft);
+  font-size: 1.063rem;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Context Notice */
+.contextNotice {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2.5rem;
+  text-align: left;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.contextNotice p {
+  color: var(--text);
+  font-size: 0.938rem;
+  margin: 0 0 1rem 0;
+  font-weight: 500;
+}
+
+.contextNotice strong {
+  color: #60a5fa;
+}
+
+.contextNotice ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.contextNotice li {
+  color: var(--textSoft);
+  font-size: 0.875rem;
+  line-height: 1.6;
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.contextNotice li::before {
+  content: '•';
+  position: absolute;
+  left: 0.5rem;
+  color: #60a5fa;
+  font-weight: bold;
+}
+
+/* Quick Actions Section */
+.quickActions {
+  margin-bottom: 2rem;
+}
+
+.quickActionsTitle {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.actionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.actionCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background-color: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.actionCard:hover {
+  background-color: rgba(93, 87, 201, 0.1);
+  border-color: #5d57c9;
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.actionIcon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.actionLabel {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.actionDescription {
+  color: var(--textSoft);
+  font-size: 0.813rem;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Help Footer */
+.helpFooter {
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 1rem;
+}
+
+.helpText {
+  color: var(--textSoft);
+  font-size: 0.938rem;
+  line-height: 1.6;
+}
+
+.helpLink {
+  color: #60a5fa;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.helpLink:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .notFoundContainer {
+    padding: 1rem;
+  }
+
+  .notFoundCard {
+    padding: 2rem 1.5rem;
+  }
+
+  .notFoundIcon {
+    font-size: 4rem;
+  }
+
+  .notFoundTitle {
+    font-size: 1.75rem;
+  }
+
+  .notFoundDescription {
+    font-size: 1rem;
+  }
+
+  .contextNotice {
+    padding: 1.25rem;
+  }
+
+  .contextNotice p {
+    font-size: 0.875rem;
+  }
+
+  .contextNotice li {
+    font-size: 0.813rem;
+  }
+
+  .quickActionsTitle {
+    font-size: 1.125rem;
+  }
+
+  .actionsGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .actionCard {
+    padding: 1.25rem;
+  }
+
+  .actionIcon {
+    font-size: 2rem;
+  }
+
+  .actionLabel {
+    font-size: 0.938rem;
+  }
+
+  .actionDescription {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .notFoundCard {
+    padding: 1.5rem 1rem;
+  }
+
+  .notFoundIcon {
+    font-size: 3.5rem;
+  }
+
+  .notFoundTitle {
+    font-size: 1.5rem;
+  }
+
+  .contextNotice {
+    padding: 1rem;
+  }
+
+  .actionsGrid {
+    gap: 0.75rem;
+  }
+}
+
+/* Reduced Motion (Accessibility) */
+@media (prefers-reduced-motion: reduce) {
+  .notFoundIcon {
+    animation: none;
+  }
+
+  .actionCard:hover {
+    transform: none;
+  }
+}
+
+/* Focus States (Accessibility) */
+.actionCard:focus {
+  outline: 3px solid rgba(93, 87, 201, 0.5);
+  outline-offset: 2px;
+}
+
+.actionCard:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.helpLink:focus {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.helpLink:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Print Styles (for documentation) */
+@media print {
+  .notFoundContainer {
+    background: white;
+  }
+
+  .notFoundCard {
+    box-shadow: none;
+    border: 2px solid #000;
+  }
+
+  .actionCard {
+    page-break-inside: avoid;
+  }
+}
