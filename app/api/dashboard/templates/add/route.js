@@ -102,6 +102,14 @@ export async function POST(request) {
       templateHasMobile,
     } = body;
 
+    // ✅ ET CE CONSOLE.LOG AUSSI (AVANT sanitization)
+    console.log('📥 AVANT SANITIZATION:', {
+      templateName,
+      templateImageIds, // ❌ Qu'est-ce qu'il y a ICI ?
+      templateHasWeb,
+      templateHasMobile,
+    });
+
     const sanitizedInputs = sanitizeTemplateInputsStrict({
       templateName,
       templateImageIds,
@@ -116,6 +124,14 @@ export async function POST(request) {
       templateHasMobile: sanitizedTemplateHasMobile,
     } = sanitizedInputs;
 
+    // ✅ AJOUTE CE CONSOLE.LOG
+    console.log('📸 APRÈS SANITIZATION:', {
+      templateName: sanitizedTemplateName,
+      templateImageIds: sanitizedTemplateImageIds, // ❌ Est-ce [] ?
+      templateHasWeb: sanitizedTemplateHasWeb,
+      templateHasMobile: sanitizedTemplateHasMobile,
+    });
+
     try {
       await templateAddingSchema.validate(
         {
@@ -128,6 +144,9 @@ export async function POST(request) {
       );
     } catch (validationError) {
       console.log('validationError', validationError);
+      console.log('validationError.inner:', validationError.inner); // ✅ AJOUTE ÇA
+      console.log('validationError.errors:', validationError.errors); // ✅ ET ÇA
+
       const responseTime = Date.now() - startTime;
       const headers = createResponseHeaders(requestId, responseTime);
 
