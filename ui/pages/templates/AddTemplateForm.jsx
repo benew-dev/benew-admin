@@ -176,8 +176,14 @@ export default function AddTemplateForm() {
         },
       );
 
+      console.log('Upload response status:', uploadResponse.status);
+      const responseText = await uploadResponse.text();
+      console.log('Upload response body:', responseText);
+
       if (!uploadResponse.ok) {
-        throw new Error('Cloudinary upload failed');
+        throw new Error(
+          `Cloudinary upload failed: ${uploadResponse.status} - ${responseText}`,
+        );
       }
 
       const result = await uploadResponse.json();
