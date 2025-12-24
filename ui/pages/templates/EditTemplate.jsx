@@ -154,6 +154,9 @@ export default function EditTemplate({ template }) {
     });
 
     try {
+      // ✅ FIX: Générer le timestamp UNE SEULE FOIS
+      const timestamp = Math.round(Date.now() / 1000);
+
       const signatureResponse = await fetch(
         '/api/dashboard/templates/add/sign-image',
         {
@@ -161,7 +164,7 @@ export default function EditTemplate({ template }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             paramsToSign: {
-              timestamp: Math.round(Date.now() / 1000),
+              timestamp: timestamp, // ✅ Utiliser le même timestamp
               folder: 'templates',
             },
           }),
@@ -169,7 +172,11 @@ export default function EditTemplate({ template }) {
       );
 
       if (!signatureResponse.ok) {
-        throw new Error('Failed to get upload signature');
+        const errorData = await signatureResponse.json();
+        console.error('Signature response error:', errorData);
+        throw new Error(
+          `Failed to get upload signature: ${signatureResponse.status}`,
+        );
       }
 
       const { signature } = await signatureResponse.json();
@@ -178,7 +185,7 @@ export default function EditTemplate({ template }) {
       formData.append('file', file);
       formData.append('api_key', process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY);
       formData.append('signature', signature);
-      formData.append('timestamp', Math.round(Date.now() / 1000).toString());
+      formData.append('timestamp', timestamp.toString()); // ✅ Réutiliser LE MÊME timestamp
       formData.append('folder', 'templates');
 
       const uploadResponse = await fetch(
@@ -189,13 +196,11 @@ export default function EditTemplate({ template }) {
         },
       );
 
-      console.log('Upload response status:', uploadResponse.status);
-      const responseText = await uploadResponse.text();
-      console.log('Upload response body:', responseText);
-
       if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('Upload response error:', errorText);
         throw new Error(
-          `Cloudinary upload failed: ${uploadResponse.status} - ${responseText}`,
+          `Cloudinary upload failed: ${uploadResponse.status} - ${errorText}`,
         );
       }
 
@@ -364,7 +369,7 @@ export default function EditTemplate({ template }) {
           <div className={styles.infoItem}>
             <div className={styles.infoLabel}>Created At</div>
             <div className={styles.infoValue}>
-              {new Date(template.created_at).toLocaleDateString()}
+              {new Date(template.template_added).toLocaleDateString()}
             </div>
           </div>
           {template.sales_count > 0 && (
