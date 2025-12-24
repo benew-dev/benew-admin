@@ -222,7 +222,7 @@ export default function EditTemplate({ template }) {
 
   // ===== UPLOAD NEW IMAGES =====
   const handleUploadNewImages = useCallback(async () => {
-    if (newFiles.length === 0) return true;
+    if (newFiles.length === 0) return []; // ✅ Retourne un array vide si pas de nouveaux fichiers
 
     setIsUploading(true);
 
@@ -233,20 +233,20 @@ export default function EditTemplate({ template }) {
     try {
       const uploadPromises = newFiles.map((file) => uploadToCloudinary(file));
       const imageIds = await Promise.all(uploadPromises);
-      setNewImageIds(imageIds);
+      setNewImageIds(imageIds); // ✅ Met à jour le state (pour le UI)
 
       trackUpload('batch_upload_successful', {
         filesCount: imageIds.length,
       });
 
-      return true;
+      return imageIds; // ✅ RETOURNE les IDs au lieu de true
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
         files: 'Failed to upload new images. Please try again.',
       }));
       trackUploadError(error, 'batch_upload');
-      return false;
+      return null; // ✅ Retourne null en cas d'erreur
     } finally {
       setIsUploading(false);
     }
@@ -260,10 +260,17 @@ export default function EditTemplate({ template }) {
       templateId: template.template_id,
     });
 
+    // ✅ FIX: Utiliser une variable locale pour les nouveaux IDs
+    let uploadedNewIds = newImageIds;
+
     // Upload new images if any
     if (newFiles.length > 0 && newImageIds.length === 0) {
-      const uploadSuccess = await handleUploadNewImages();
-      if (!uploadSuccess) return;
+      const uploadedIds = await handleUploadNewImages(); // ✅ Récupère les IDs directement
+      if (uploadedIds === null) {
+        // Erreur lors de l'upload
+        return;
+      }
+      uploadedNewIds = uploadedIds; // ✅ Utilise les IDs retournés
     }
 
     setIsSubmitting(true);
@@ -271,7 +278,7 @@ export default function EditTemplate({ template }) {
 
     try {
       const sanitizedName = formData.templateName.trim();
-      const allImageIds = [...existingImages, ...newImageIds];
+      const allImageIds = [...existingImages, ...uploadedNewIds]; // ✅ Utilise les IDs corrects
 
       const response = await fetch(
         `/api/dashboard/templates/${template.template_id}/edit`,
@@ -280,7 +287,7 @@ export default function EditTemplate({ template }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             templateName: sanitizedName,
-            templateImageIds: allImageIds,
+            templateImageIds: allImageIds, // ✅ Contient les vrais IDs
             templateHasWeb: formData.templateHasWeb,
             templateHasMobile: formData.templateHasMobile,
             isActive: formData.isActive,

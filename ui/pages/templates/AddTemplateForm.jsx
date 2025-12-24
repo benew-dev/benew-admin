@@ -214,7 +214,7 @@ export default function AddTemplateForm() {
         ...prev,
         files: 'Please select at least one image',
       }));
-      return false;
+      return null; // ✅ Retourne null au lieu de false
     }
 
     setIsUploading(true);
@@ -233,20 +233,20 @@ export default function AddTemplateForm() {
         uploadToCloudinary(file),
       );
       const imageIds = await Promise.all(uploadPromises);
-      setUploadedImageIds(imageIds);
+      setUploadedImageIds(imageIds); // ✅ Met à jour le state (pour le UI)
 
       trackUpload('batch_upload_successful', {
         filesCount: imageIds.length,
       });
 
-      return true;
+      return imageIds; // ✅ RETOURNE les IDs au lieu de true
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
         files: 'Failed to upload images. Please try again.',
       }));
       trackUploadError(error, 'batch_upload');
-      return false;
+      return null; // ✅ Retourne null en cas d'erreur
     } finally {
       setIsUploading(false);
     }
@@ -258,10 +258,17 @@ export default function AddTemplateForm() {
 
     trackForm('add_template_submit_started');
 
+    // ✅ FIX: Utiliser une variable locale pour les IDs
+    let imageIdsToSubmit = uploadedImageIds;
+
     // Upload images first if not already uploaded
     if (uploadedImageIds.length === 0) {
-      const uploadSuccess = await handleUploadImages();
-      if (!uploadSuccess) return;
+      const uploadedIds = await handleUploadImages(); // ✅ Récupère les IDs directement
+      if (!uploadedIds || uploadedIds.length === 0) {
+        setErrors({ submit: 'Failed to upload images. Please try again.' });
+        return;
+      }
+      imageIdsToSubmit = uploadedIds; // ✅ Utilise les IDs retournés
     }
 
     setIsSubmitting(true);
@@ -275,7 +282,7 @@ export default function AddTemplateForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           templateName: sanitizedName,
-          templateImageIds: uploadedImageIds,
+          templateImageIds: imageIdsToSubmit, // ✅ Utilise les IDs corrects
           templateHasWeb: formData.templateHasWeb,
           templateHasMobile: formData.templateHasMobile,
         }),
