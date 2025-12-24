@@ -10,6 +10,8 @@ import {
   trackNavigation,
   trackDatabaseError,
 } from '@/utils/monitoring';
+import Link from 'next/link';
+import { MdAdd } from 'react-icons/md';
 
 export default function ListTemplates({ data }) {
   const router = useRouter();
@@ -127,6 +129,18 @@ export default function ListTemplates({ data }) {
 
   return (
     <div className={styles.container}>
+      <div className={styles.top}>
+        <h1>Templates</h1>
+        <Link
+          href="/dashboard/templates/add"
+          onClick={() => trackNavigation('navigate_to_add_template')}
+        >
+          <button className={styles.addButton} type="button">
+            <MdAdd /> Add Template
+          </button>
+        </Link>
+      </div>
+
       {/* Global Error */}
       {error && (
         <div
