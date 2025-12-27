@@ -3,21 +3,13 @@
 import { getClient } from '@/backend/dbConnect';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { applyRateLimit } from '@/backend/rateLimiter';
+import { checkServerActionRateLimit } from '@/backend/rateLimiter';
 import logger from '@/utils/logger';
 import {
   trackAuth,
   trackDatabase,
   trackDatabaseError,
 } from '@/utils/monitoring';
-
-const filterRateLimit = applyRateLimit('CONTENT_API', {
-  windowMs: 2 * 60 * 1000,
-  max: 30,
-  message:
-    'Trop de tentatives de filtrage. Veuillez réessayer dans quelques minutes.',
-  prefix: 'filter_applications',
-});
 
 /**
  * Validation des filtres
@@ -122,9 +114,14 @@ export async function getFilteredApplications(filters = {}) {
       throw new Error('Authentication required');
     }
 
-    // Rate limiting
-    const rateLimitResponse = await filterRateLimit();
-    if (rateLimitResponse) {
+    // ✅ Rate limiting basé sur userId (Server Action)
+    const rateLimitKey = `filter_applications:${session.user.id}`;
+    const isRateLimited = await checkServerActionRateLimit(rateLimitKey, {
+      windowMs: 2 * 60 * 1000, // 2 minutes
+      max: 30, // 30 requêtes
+    });
+
+    if (isRateLimited) {
       logger.warn('Filter rate limit exceeded', { userId: session.user.id });
       throw new Error('Too many requests. Please try again later.');
     }

@@ -8,6 +8,7 @@
  * - ✅ Presets adaptés low-traffic
  * - ✅ Conservation: Sentry, Winston, Whitelist/Blacklist
  * - ✅ Conservation: Sécurité production-ready
+ * - ✅ NOUVEAU: Support Server Actions via checkServerActionRateLimit()
  */
 
 import { NextResponse } from 'next/server';
@@ -257,10 +258,10 @@ function trackViolation(key, endpoint) {
   violationCount.set(key, existing);
 }
 
-// ===== MAIN RATE LIMITER =====
+// ===== MAIN RATE LIMITER (POUR ROUTE HANDLERS) =====
 
 /**
- * Rate limiting middleware pour Next.js App Router
+ * Rate limiting middleware pour Next.js App Router (Route Handlers)
  * @param {string|Object} presetOrOptions - Preset name ou config custom
  * @param {Object} additionalOptions - Options supplémentaires
  * @returns {Function} Middleware async retournant NextResponse ou null
@@ -458,6 +459,108 @@ export function applyRateLimit(
   };
 }
 
+// ===== SERVER ACTION RATE LIMITER =====
+
+/**
+ * Rate limiter pour Server Actions (sans objet Request)
+ *
+ * Utilisation optimale pour app admin avec 5 users/jour :
+ * - Rate limiting basé sur clé unique (userId, sessionId, etc.)
+ * - Pas besoin d'objet Request (compatible Server Actions)
+ * - Réutilisable pour toutes vos Server Actions
+ *
+ * @param {string} key - Clé unique (ex: 'filter_templates:user123')
+ * @param {Object} config - Configuration rate limit
+ * @param {number} config.windowMs - Fenêtre temporelle en ms (défaut: 2 min)
+ * @param {number} config.max - Nombre max de requêtes (défaut: 30)
+ * @returns {Promise<boolean>} true si rate limit dépassé, false sinon
+ *
+ * @example
+ * // Dans une Server Action
+ * const isRateLimited = await checkServerActionRateLimit(
+ *   `filter_templates:${userId}`,
+ *   { windowMs: 2 * 60 * 1000, max: 30 }
+ * );
+ *
+ * if (isRateLimited) {
+ *   throw new Error('Too many requests');
+ * }
+ */
+export async function checkServerActionRateLimit(key, config = {}) {
+  try {
+    // Configuration par défaut
+    const finalConfig = {
+      windowMs: 2 * 60 * 1000, // 2 minutes
+      max: 30, // 30 requêtes
+      ...config,
+    };
+
+    // 0. Cleanup inline (serverless-friendly)
+    cleanupExpiredEntries();
+
+    // 1. Get request data
+    const now = Date.now();
+    const windowStart = now - finalConfig.windowMs;
+    let requestData = requestCache.get(key) || { requests: [] };
+
+    // 2. Filter old requests
+    requestData.requests = requestData.requests.filter(
+      (timestamp) => timestamp > windowStart,
+    );
+
+    const currentRequests = requestData.requests.length;
+
+    // 3. Check limit
+    if (currentRequests >= finalConfig.max) {
+      // LIMIT EXCEEDED
+
+      // Track violation
+      trackViolation(key, 'server_action');
+
+      // Analyze behavior (simplifié)
+      const behavior = analyzeBehaviorSimple(key);
+
+      // Log violation
+      logger.warn('Server Action rate limit exceeded', {
+        key: key.substring(0, 30) + '...', // Anonymiser la clé
+        component: 'rateLimit',
+        requests: currentRequests,
+        limit: finalConfig.max,
+        suspicious: behavior.isSuspicious,
+        threatLevel: behavior.threatLevel,
+      });
+
+      // Retourner true = rate limit dépassé
+      return true;
+    }
+
+    // 4. Allow request
+    requestData.requests.push(now);
+    requestCache.set(key, requestData);
+
+    logger.debug('Server Action request allowed within rate limits', {
+      key: key.substring(0, 30) + '...',
+      component: 'rateLimit',
+      requests: currentRequests + 1,
+      limit: finalConfig.max,
+    });
+
+    // Retourner false = OK
+    return false;
+  } catch (error) {
+    // Error handling - fail open (allow request on error)
+    logger.error('Error in Server Action rate limit', {
+      error: error.message,
+      stack: error.stack,
+      component: 'rateLimit',
+      key: key.substring(0, 30) + '...',
+    });
+
+    // Fail open (allow request on error)
+    return false;
+  }
+}
+
 // ===== UTILITY FUNCTIONS =====
 
 /**
@@ -514,6 +617,7 @@ export function getRateLimitStats() {
 
 export default {
   applyRateLimit,
+  checkServerActionRateLimit, // ✅ NOUVEAU
   addToWhitelist,
   addToBlacklist,
   resetAllData,
@@ -522,54 +626,47 @@ export default {
 };
 
 /*
-RÉSUMÉ DES CHANGEMENTS:
+============================================================================
+CHANGEMENTS - VERSION 2.0 (Support Server Actions)
+============================================================================
 
-✅ SIMPLIFICATIONS (500 → 200 lignes = -60%)
-  - Analyse comportementale: statistiques ML → règles simples
-  - Tracking: 7 métriques → 3 métriques (violations, endpoints, lastSeen)
-  - Cleanup: setInterval → inline (serverless-friendly)
-  - Sévérité: 4 niveaux → logique simplifiée
-  
-✅ OPTIMISATIONS 5 USERS/JOUR
-  - AUTH_ENDPOINTS: 10 attempts → 20 attempts
-  - AUTH_ENDPOINTS: 10 min → 15 min
-  - PUBLIC_API: 30 req/min → 60 req/min
-  - CONTENT_API: 15 req/2min → 30 req/2min
-  
-✅ CONSERVATION (Sécurité/Monitoring)
-  - ✅ Sentry integration complète
-  - ✅ Winston logging
-  - ✅ IP anonymization (GDPR)
-  - ✅ Whitelist/Blacklist
-  - ✅ Vercel/Cloudflare headers
-  - ✅ Error handling (fail-open)
-  
-✅ SERVERLESS-FRIENDLY
-  - ✅ Cleanup inline (pas de setInterval)
-  - ✅ Cache limité (1000 entries max)
-  - ✅ Pas de long-running processes
+✅ AJOUT MAJEUR:
+  - Nouvelle fonction: checkServerActionRateLimit()
+  - Compatible Server Actions (pas besoin d'objet Request)
+  - Rate limiting basé sur clé unique (userId, sessionId, etc.)
+  - Même logique de sécurité que applyRateLimit()
 
-USAGE (Identique):
+✅ GARANTIES:
+  - applyRateLimit() : 100% inchangé (vos APIs fonctionnent toujours)
+  - ZERO régression sur code existant
+  - Même système de cache, cleanup, violations
 
-// app/api/auth/[...all]/route.ts
+✅ USAGE:
+
+// Route Handlers (INCHANGÉ)
 import { applyRateLimit } from '@/backend/rateLimiter';
-
 const authRateLimit = applyRateLimit('AUTH_ENDPOINTS');
-
-async function handlerWithRateLimit(req) {
+export async function POST(req) {
   const rateLimitResponse = await authRateLimit(req);
-  
-  if (rateLimitResponse) {
-    return rateLimitResponse; // 429 Too Many Requests
-  }
-  
-  // Continue normal handler
+  if (rateLimitResponse) return rateLimitResponse;
+  // ...
 }
 
-MÉTRIQUES:
-- Lignes de code: 500 → 200 (-60%)
-- Complexité cyclomatic: 45 → 15 (-67%)
-- Maintenance: Complexe → Simple
-- Performance: +40% (moins de calculs)
-- Adapté 5 users/jour: ✅ Parfait
+// Server Actions (NOUVEAU)
+import { checkServerActionRateLimit } from '@/backend/rateLimiter';
+export async function getFilteredApplications(filters) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  
+  const isRateLimited = await checkServerActionRateLimit(
+    `filter_applications:${session.user.id}`,
+    { windowMs: 2 * 60 * 1000, max: 30 }
+  );
+  
+  if (isRateLimited) {
+    throw new Error('Too many requests');
+  }
+  // ...
+}
+
+============================================================================
 */
