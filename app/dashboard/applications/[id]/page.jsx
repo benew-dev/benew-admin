@@ -36,7 +36,6 @@ async function getApplicationFromDatabase(applicationId) {
         { id: applicationId },
         { abortEarly: false },
       );
-      // eslint-disable-next-line no-unused-vars
     } catch (validationError) {
       logger.warn('Invalid application ID', {
         requestId,
