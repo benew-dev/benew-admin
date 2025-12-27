@@ -365,8 +365,15 @@ export const applicationUpdateSchema = yup.object().shape({
     .of(
       yup
         .string()
-        .url('Each version must be a valid URL')
-        .max(500, 'Version URL must not exceed 500 characters'),
+        .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid version image format') // ← Accepte "applications/abc123"
+        .test(
+          'valid-cloudinary-id',
+          'Invalid Cloudinary version image ID format',
+          (value) => {
+            if (!value) return false;
+            return /[a-zA-Z0-9]/.test(value);
+          },
+        ),
     )
     .max(5, 'Cannot have more than 5 other versions')
     .nullable()
