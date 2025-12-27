@@ -1,0 +1,342 @@
+/* ui/styling/dashboard/applications/singleError.module.css - SINGLE APP ERROR STYLES */
+
+.errorContainer {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background-color: var(--bg);
+}
+
+.errorCard {
+  max-width: 700px;
+  width: 100%;
+  background-color: var(--bgSoft);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Icon */
+.errorIcon {
+  font-size: 4.5rem;
+  margin-bottom: 1.5rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+/* Title */
+.errorTitle {
+  color: var(--text);
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  letter-spacing: -0.025em;
+}
+
+/* Description */
+.errorDescription {
+  color: var(--textSoft);
+  font-size: 1.063rem;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+/* Context Notice */
+.contextNotice {
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+.contextNotice strong {
+  display: block;
+  color: #34d399;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.contextNotice p {
+  color: var(--textSoft);
+  font-size: 0.938rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Error Reference */
+.errorReference {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.errorReference small {
+  color: var(--textSoft);
+  font-size: 0.875rem;
+  line-height: 1.8;
+}
+
+.errorReference code {
+  font-family: 'Courier New', Courier, monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.813rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.timestamp {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.813rem;
+  opacity: 0.7;
+}
+
+/* Action Buttons */
+.errorActions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.btnPrimary,
+.btnSecondary,
+.btnLink {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.btnPrimary {
+  background-color: #5d57c9;
+  color: white;
+}
+
+.btnPrimary:hover {
+  background-color: #4a45a0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(93, 87, 201, 0.3);
+}
+
+.btnPrimary:active {
+  transform: translateY(0);
+}
+
+.btnSecondary {
+  background-color: transparent;
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btnSecondary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+}
+
+.btnSecondary:active {
+  transform: translateY(0);
+}
+
+.btnLink {
+  background-color: transparent;
+  color: var(--textSoft);
+  padding: 0.5rem;
+  font-size: 0.938rem;
+  border: none;
+}
+
+.btnLink:hover {
+  color: var(--text);
+  text-decoration: underline;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Focus States */
+.btnPrimary:focus,
+.btnSecondary:focus,
+.btnLink:focus {
+  outline: 3px solid rgba(93, 87, 201, 0.5);
+  outline-offset: 2px;
+}
+
+.btnPrimary:focus:not(:focus-visible),
+.btnSecondary:focus:not(:focus-visible),
+.btnLink:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Developer Details */
+.errorDetails {
+  margin-top: 2rem;
+  text-align: left;
+  background-color: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.errorDetails summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #ffc107;
+  user-select: none;
+  padding: 0.5rem;
+  list-style: none;
+}
+
+.errorDetails summary::-webkit-details-marker {
+  display: none;
+}
+
+.errorDetails summary::before {
+  content: '▶ ';
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+.errorDetails[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.errorDetails summary:hover {
+  text-decoration: underline;
+}
+
+.debugInfo {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.debugInfo p {
+  color: var(--textSoft);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+  word-break: break-word;
+}
+
+.debugInfo strong {
+  color: #ffc107;
+  font-weight: 600;
+}
+
+.errorStack {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #1a1a1a;
+  color: #e2e8f0;
+  border-radius: 6px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.813rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .errorContainer {
+    padding: 1rem;
+  }
+
+  .errorCard {
+    padding: 2rem 1.5rem;
+  }
+
+  .errorTitle {
+    font-size: 1.75rem;
+  }
+
+  .errorDescription {
+    font-size: 1rem;
+  }
+
+  .errorIcon {
+    font-size: 3.5rem;
+  }
+
+  .contextNotice {
+    padding: 1rem;
+  }
+
+  .contextNotice strong {
+    font-size: 0.938rem;
+  }
+
+  .contextNotice p {
+    font-size: 0.875rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .errorActions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .btnPrimary,
+  .btnSecondary {
+    width: auto;
+    min-width: 160px;
+  }
+
+  .btnLink {
+    width: 100%;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .errorIcon {
+    animation: none;
+  }
+
+  .btnPrimary:hover,
+  .btnSecondary:hover {
+    transform: none;
+  }
+}
+
+/* Loading State */
+.btnPrimary:disabled,
+.btnSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
