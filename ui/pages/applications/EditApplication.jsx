@@ -135,6 +135,9 @@ export default function EditApplication({ application }) {
           errors[err.path] = err.message;
         });
 
+        console.log('errors');
+        console.log(errors);
+
         setFieldErrors(errors);
         setErrorMessage(
           'Please fix the validation errors below and try again.',
