@@ -1,0 +1,279 @@
+/* ui/styling/dashboard/applications/edit/editNotFound.module.css - EDIT APP NOT FOUND */
+
+.notFoundContainer {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background-color: var(--bg);
+}
+
+.notFoundCard {
+  max-width: 900px;
+  width: 100%;
+  background-color: var(--bgSoft);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 404 Icon */
+.notFoundIcon {
+  font-size: 6rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 1rem;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.1);
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Title */
+.notFoundTitle {
+  color: var(--text);
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+/* Description */
+.notFoundDescription {
+  color: var(--textSoft);
+  font-size: 1.063rem;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+/* Context Notice */
+.contextNotice {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 2.5rem;
+  text-align: left;
+}
+
+.contextNotice p {
+  color: #60a5fa;
+  font-size: 1rem;
+  margin: 0 0 0.75rem 0;
+}
+
+.contextNotice strong {
+  font-weight: 600;
+}
+
+.contextNotice ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.contextNotice li {
+  color: var(--textSoft);
+  font-size: 0.938rem;
+  line-height: 1.6;
+  padding-left: 1.5rem;
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.contextNotice li::before {
+  content: '•';
+  position: absolute;
+  left: 0.5rem;
+  color: #60a5fa;
+  font-weight: bold;
+}
+
+.contextNotice li:last-child {
+  margin-bottom: 0;
+}
+
+/* Quick Actions Section */
+.quickActions {
+  margin-bottom: 2rem;
+}
+
+.quickActionsTitle {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.actionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.actionCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.actionCard:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.actionCard:active {
+  transform: translateY(0);
+}
+
+.actionIcon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.actionLabel {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.actionDescription {
+  color: var(--textSoft);
+  font-size: 0.813rem;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Help Footer */
+.helpFooter {
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 1rem;
+}
+
+.helpText {
+  color: var(--textSoft);
+  font-size: 0.938rem;
+}
+
+.helpLink {
+  color: #60a5fa;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.helpLink:hover {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .notFoundContainer {
+    padding: 1rem;
+  }
+
+  .notFoundCard {
+    padding: 2rem 1.5rem;
+  }
+
+  .notFoundIcon {
+    font-size: 4.5rem;
+  }
+
+  .notFoundTitle {
+    font-size: 1.75rem;
+  }
+
+  .notFoundDescription {
+    font-size: 1rem;
+  }
+
+  .contextNotice {
+    padding: 1rem;
+  }
+
+  .contextNotice p {
+    font-size: 0.938rem;
+  }
+
+  .contextNotice li {
+    font-size: 0.875rem;
+  }
+
+  .actionsGrid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .actionCard {
+    padding: 1.25rem 1rem;
+  }
+
+  .actionIcon {
+    font-size: 2rem;
+  }
+
+  .actionLabel {
+    font-size: 0.938rem;
+  }
+
+  .actionDescription {
+    font-size: 0.75rem;
+  }
+}
+
+/* Accessibility - Focus States */
+.actionCard:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+.actionCard:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.helpLink:focus {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.helpLink:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .notFoundIcon {
+    animation: none;
+  }
+
+  .actionCard:hover {
+    transform: none;
+  }
+}
