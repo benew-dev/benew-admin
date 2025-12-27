@@ -1,0 +1,323 @@
+// app/dashboard/platforms/edit/[id]/error.jsx - EDIT PLATFORM ERROR BOUNDARY
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import * as Sentry from '@sentry/nextjs';
+import styles from '@/ui/styling/dashboard/platforms/editError.module.css';
+
+/**
+ * EDIT PLATFORM ERROR BOUNDARY - Client Component
+ *
+ * Production-ready error handling for edit platform page (5 users/day):
+ * - Captures errors during platform edit workflow
+ * - Form validation errors
+ * - API update errors
+ * - Database constraint violations
+ * - Automatic Sentry reporting with edit platform context
+ * - Recovery actions specific to platform editing
+ *
+ * IMPORTANT: This catches errors in:
+ * - EditPlatform component
+ * - Form validation
+ * - API update submission
+ * - Does NOT catch: Platform not found (handled by not-found.jsx)
+ */
+export default function EditPlatformError({ error, reset }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    // ✅ Report error to Sentry with edit platform context
+    Sentry.captureException(error, {
+      tags: {
+        component: 'edit-platform-error-boundary',
+        area: 'platforms-edit',
+        feature: 'platform-editing',
+        critical: 'true',
+      },
+      contexts: {
+        error_info: {
+          name: error.name || 'UnknownError',
+          message: error.message || 'No error message',
+        },
+        platforms: {
+          route: '/dashboard/platforms/edit/[id]',
+          operation: 'edit',
+        },
+      },
+    });
+
+    // ✅ Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Edit platform error:', error);
+    }
+  }, [error]);
+
+  // Determine error type for user-friendly messaging
+  const getErrorInfo = () => {
+    const errorMessage = error?.message?.toLowerCase() || '';
+
+    // Database fetch errors
+    if (
+      errorMessage.includes('database') ||
+      errorMessage.includes('query') ||
+      errorMessage.includes('postgres') ||
+      errorMessage.includes('connection')
+    ) {
+      return {
+        title: 'Database Error',
+        description:
+          'Unable to load or update the platform data. This could be a temporary database issue. Our team has been notified.',
+        icon: '💾',
+        showRetry: true,
+        showGoToList: true,
+        showGoToDashboard: false,
+        advice:
+          'Your changes may not have been saved. Please try again in a moment.',
+      };
+    }
+
+    // Network/API errors
+    if (
+      errorMessage.includes('fetch') ||
+      errorMessage.includes('network') ||
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('api')
+    ) {
+      return {
+        title: 'Connection Error',
+        description:
+          'Unable to connect to the server. Please check your internet connection and try again.',
+        icon: '🌐',
+        showRetry: true,
+        showGoToList: true,
+        showGoToDashboard: false,
+        advice:
+          'Your changes may not have been saved. Please verify your connection.',
+      };
+    }
+
+    // Validation errors
+    if (
+      errorMessage.includes('validation') ||
+      errorMessage.includes('invalid') ||
+      errorMessage.includes('required')
+    ) {
+      return {
+        title: 'Form Validation Error',
+        description:
+          'Some of the platform information is invalid or missing. Please check your inputs and try again.',
+        icon: '⚠️',
+        showRetry: true,
+        showGoToList: false,
+        showGoToDashboard: false,
+        advice:
+          'For electronic platforms, account name and number are required. For cash payment, only platform name is required.',
+      };
+    }
+
+    // Check constraint violation (cash payment with account info)
+    if (errorMessage.includes('constraint') || errorMessage.includes('check')) {
+      return {
+        title: 'Data Constraint Error',
+        description:
+          'The platform data violates business rules. Cash payments cannot have account information.',
+        icon: '🚫',
+        showRetry: true,
+        showGoToList: false,
+        showGoToDashboard: false,
+        advice:
+          'If cash payment is selected, account fields must be empty. If electronic, both account fields are required.',
+      };
+    }
+
+    // Auth/Session errors
+    if (
+      errorMessage.includes('auth') ||
+      errorMessage.includes('session') ||
+      errorMessage.includes('unauthorized')
+    ) {
+      return {
+        title: 'Session Expired',
+        description:
+          'Your session has expired. Please refresh the page and log in again to continue editing.',
+        icon: '🔐',
+        showRetry: false,
+        showGoToList: true,
+        showGoToDashboard: false,
+        advice:
+          'You will need to log in again before making changes. Your unsaved changes will be lost.',
+      };
+    }
+
+    // Rate limit errors
+    if (errorMessage.includes('rate') || errorMessage.includes('429')) {
+      return {
+        title: 'Too Many Requests',
+        description:
+          'You have made too many update attempts. Please wait a few minutes before trying again.',
+        icon: '⏱️',
+        showRetry: false,
+        showGoToList: true,
+        showGoToDashboard: false,
+        advice: 'Rate limit will reset in 5 minutes.',
+      };
+    }
+
+    // Platform not found (should be caught by not-found.jsx but just in case)
+    if (errorMessage.includes('not found') || errorMessage.includes('404')) {
+      return {
+        title: 'Platform Not Found',
+        description:
+          'The platform you are trying to edit no longer exists or has been deleted.',
+        icon: '🔍',
+        showRetry: false,
+        showGoToList: true,
+        showGoToDashboard: true,
+        advice: 'The platform may have been deleted by another administrator.',
+      };
+    }
+
+    // Generic error
+    return {
+      title: 'Failed to Edit Platform',
+      description:
+        'An unexpected error occurred while editing the platform. Our team has been notified. Please try again or contact support if the problem persists.',
+      icon: '❌',
+      showRetry: true,
+      showGoToList: true,
+      showGoToDashboard: true,
+      advice:
+        'If this error persists, try refreshing the page or clearing your browser cache.',
+    };
+  };
+
+  const errorInfo = getErrorInfo();
+
+  const handleRetry = () => {
+    reset(); // Attempt to recover by re-rendering
+  };
+
+  const handleRefresh = () => {
+    router.refresh(); // Hard refresh the current route
+  };
+
+  const handleGoToList = () => {
+    router.push('/dashboard/platforms');
+  };
+
+  const handleGoToDashboard = () => {
+    router.push('/dashboard');
+  };
+
+  const handleContactSupport = () => {
+    const errorId = Sentry.lastEventId() || 'N/A';
+    const timestamp = new Date().toISOString();
+
+    window.location.href = `mailto:support@benew.com?subject=Edit Platform Error - Admin App&body=Error Reference: ${errorId}%0ATimestamp: ${timestamp}%0APage: Edit Payment Platform%0ARoute: /dashboard/platforms/edit/[id]%0A%0APlease describe what you were trying to do:%0A- Platform ID:%0A- Changes attempted:%0A- Error encountered:%0A`;
+  };
+
+  return (
+    <div className={styles.errorContainer}>
+      <div className={styles.errorCard}>
+        {/* Icon */}
+        <div className={styles.errorIcon}>{errorInfo.icon}</div>
+
+        {/* Title */}
+        <h1 className={styles.errorTitle}>{errorInfo.title}</h1>
+
+        {/* Description */}
+        <p className={styles.errorDescription}>{errorInfo.description}</p>
+
+        {/* Platform Editing Context */}
+        <div className={styles.contextNotice}>
+          <strong>✏️ Platform Editing</strong>
+          <p>
+            This error occurred while trying to edit a payment platform. Your
+            existing platform data is safe, but recent changes may not have been
+            saved.
+          </p>
+        </div>
+
+        {/* Advice Box */}
+        {errorInfo.advice && (
+          <div className={styles.adviceBox}>
+            <strong>💡 Tip:</strong>
+            <p>{errorInfo.advice}</p>
+          </div>
+        )}
+
+        {/* Error Reference (for support) */}
+        {Sentry.lastEventId() && (
+          <div className={styles.errorReference}>
+            <small>
+              Error ID: <code>{Sentry.lastEventId()}</code>
+            </small>
+            <br />
+            <small className={styles.timestamp}>
+              {new Date().toLocaleString()}
+            </small>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className={styles.errorActions}>
+          {errorInfo.showRetry && (
+            <button onClick={handleRetry} className={styles.btnPrimary}>
+              Try Again
+            </button>
+          )}
+
+          <button onClick={handleRefresh} className={styles.btnSecondary}>
+            Refresh Page
+          </button>
+
+          {errorInfo.showGoToList && (
+            <button onClick={handleGoToList} className={styles.btnSecondary}>
+              Back to Platforms List
+            </button>
+          )}
+
+          {errorInfo.showGoToDashboard && (
+            <button onClick={handleGoToDashboard} className={styles.btnLink}>
+              Go to Dashboard
+            </button>
+          )}
+
+          <button onClick={handleContactSupport} className={styles.btnLink}>
+            Contact Support
+          </button>
+        </div>
+
+        {/* Developer Info (Development Only) */}
+        {process.env.NODE_ENV === 'development' && (
+          <details className={styles.errorDetails}>
+            <summary>Developer Info (dev only)</summary>
+            <div className={styles.debugInfo}>
+              <p>
+                <strong>Error Name:</strong> {error.name || 'Unknown'}
+              </p>
+              <p>
+                <strong>Error Message:</strong> {error.message || 'No message'}
+              </p>
+              <p>
+                <strong>Route:</strong> /dashboard/platforms/edit/[id]
+              </p>
+              <p>
+                <strong>Operation:</strong> Edit Payment Platform
+              </p>
+              {error.digest && (
+                <p>
+                  <strong>Error Digest:</strong> {error.digest}
+                </p>
+              )}
+              {error.stack && (
+                <pre className={styles.errorStack}>{error.stack}</pre>
+              )}
+            </div>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+}

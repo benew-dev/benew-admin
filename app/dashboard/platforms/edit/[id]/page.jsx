@@ -1,4 +1,4 @@
-// app/dashboard/platforms/edit/[id]/page.jsx
+// app/dashboard/platforms/edit/[id]/page.jsx - UPDATED WITH notFound()
 import EditPlatform from '@/ui/pages/platforms/EditPlatform';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
@@ -15,6 +15,11 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Récupère une plateforme pour édition
+ * @param {string} platformId - UUID de la plateforme
+ * @returns {Promise<Object|null>} Plateforme ou null si non trouvée
+ */
 async function getPlatformForEdit(platformId) {
   let client;
   const requestId = crypto.randomUUID();
@@ -23,26 +28,28 @@ async function getPlatformForEdit(platformId) {
   logger.info('Fetching platform for edit', { requestId, platformId });
 
   try {
-    // Validation ID
+    // ===== 1. VALIDATION ID =====
     try {
       await platformIdSchema.validate(
         { id: platformId },
         { abortEarly: false },
       );
-      // eslint-disable-next-line no-unused-vars
     } catch (validationError) {
       logger.warn('Invalid platform ID', { requestId, platformId });
       trackValidation('invalid_platform_id_page', { platformId }, 'warning');
+      // ✅ Retourne null pour déclencher notFound()
       return null;
     }
 
+    // ===== 2. NETTOYAGE UUID =====
     const cleanedPlatformId = cleanUUID(platformId);
     if (!cleanedPlatformId) {
       logger.warn('Failed to clean platform ID', { requestId, platformId });
+      // ✅ Retourne null pour déclencher notFound()
       return null;
     }
 
-    // Connexion DB
+    // ===== 3. CONNEXION DB =====
     try {
       client = await getClient();
     } catch (dbError) {
@@ -51,10 +58,11 @@ async function getPlatformForEdit(platformId) {
         requestId,
       });
       trackDatabaseError(dbError, 'db_connection_page', { requestId });
-      return null;
+      // ✅ Erreur connexion DB → error.jsx (pas notFound)
+      throw dbError;
     }
 
-    // ✅ MODIFIÉ : Requête SQL avec is_cash_payment et description
+    // ===== 4. QUERY PLATFORM =====
     let result;
     try {
       const platformQuery = `
@@ -77,17 +85,19 @@ async function getPlatformForEdit(platformId) {
       logger.error('Query error', { error: queryError.message, requestId });
       trackDatabaseError(queryError, 'platform_fetch_edit', { requestId });
       await client.cleanup();
-      return null;
+      // ✅ Erreur SQL → error.jsx (pas notFound)
+      throw queryError;
     }
 
-    // Vérifier existence
+    // ===== 5. VÉRIFICATION RÉSULTAT =====
     if (result.rows.length === 0) {
-      logger.warn('Platform not found', {
+      logger.warn('Platform not found in database', {
         requestId,
         platformId: cleanedPlatformId,
       });
       trackValidation('platform_not_found_page', {}, 'warning');
       await client.cleanup();
+      // ✅ Plateforme inexistante → notFound()
       return null;
     }
 
@@ -108,7 +118,7 @@ async function getPlatformForEdit(platformId) {
 
     await client.cleanup();
 
-    // ✅ MODIFIÉ : Retourner is_cash_payment et description
+    // ===== 6. SANITIZATION =====
     return {
       platform_id: platform.platform_id,
       platform_name: platform.platform_name || '[No Name]',
@@ -124,15 +134,20 @@ async function getPlatformForEdit(platformId) {
     logger.error('Global fetch error', { error: error.message, requestId });
     trackDatabaseError(error, 'platform_fetch_edit_global', { requestId });
     if (client) await client.cleanup();
-    return null;
+    // ✅ Erreur générale → error.jsx
+    throw error;
   }
 }
 
+/**
+ * Page d'édition d'une plateforme
+ */
 export default async function EditPlatformPage({ params }) {
   try {
+    // ===== 1. RÉCUPÉRATION ID =====
     const { id } = await params;
 
-    // Vérifier authentification
+    // ===== 2. VÉRIFICATION AUTH =====
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user) {
       logger.warn('Unauthenticated access to edit page');
@@ -140,13 +155,19 @@ export default async function EditPlatformPage({ params }) {
       redirect('/login');
     }
 
-    // Récupérer la plateforme
+    // ===== 3. RÉCUPÉRATION PLATEFORME =====
     const platform = await getPlatformForEdit(id);
 
+    // ✅ Si null → déclencher not-found.jsx
     if (!platform) {
+      logger.info('Platform not found, triggering notFound()', {
+        platformId: id,
+        userId: session.user.id,
+      });
       notFound();
     }
 
+    // ===== 4. RENDER =====
     logger.info('Edit platform page rendering', {
       platformId: platform.platform_id,
       name: platform.platform_name,
@@ -156,8 +177,22 @@ export default async function EditPlatformPage({ params }) {
 
     return <EditPlatform platform={platform} />;
   } catch (error) {
-    logger.error('Edit platform page error', { error: error.message });
+    // ✅ Gestion des redirects Next.js
+    if (
+      error.message?.includes('NEXT_REDIRECT') ||
+      error.message?.includes('NEXT_NOT_FOUND')
+    ) {
+      throw error;
+    }
+
+    // ✅ Toute autre erreur → error.jsx
+    logger.error('Edit platform page error', {
+      error: error.message,
+      stack: error.stack,
+    });
     trackDatabaseError(error, 'edit_page_render', { critical: 'true' });
-    notFound();
+
+    // Re-throw pour déclencher error.jsx
+    throw error;
   }
 }
