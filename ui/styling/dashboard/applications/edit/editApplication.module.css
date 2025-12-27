@@ -649,3 +649,22 @@
     font-weight: 900;
   }
 }
+
+/* Section description */
+.sectionDescription {
+  color: var(--textSoft);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+/* Image count */
+.imageCount {
+  color: var(--text);
+  font-size: 0.95rem;
+  margin: 0.8rem 0;
+  padding: 0.5rem 1rem;
+  background-color: rgba(93, 87, 201, 0.1);
+  border-radius: 6px;
+  border-left: 3px solid #5d57c9;
+}

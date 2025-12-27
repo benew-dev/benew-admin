@@ -34,11 +34,14 @@ export default function EditApplication({ application }) {
   const [imageUrls, setImageUrls] = useState(
     application.application_images || [],
   );
+
+  // ✅ MODIFIÉ: Gérer otherVersions comme array d'images
   const [otherVersions, setOtherVersions] = useState(
     Array.isArray(application.application_other_versions)
-      ? application.application_other_versions.join(', ')
-      : application.application_other_versions || '',
+      ? application.application_other_versions
+      : [],
   );
+
   const [isActive, setIsActive] = useState(application.is_active);
 
   // Read-only fields
@@ -87,12 +90,8 @@ export default function EditApplication({ application }) {
       category,
       level: parseInt(level),
       imageUrls,
-      otherVersions: otherVersions
-        ? otherVersions
-            .split(',')
-            .map((url) => url.trim())
-            .filter((url) => url)
-        : null,
+      // ✅ MODIFIÉ: Envoyer otherVersions comme array
+      otherVersions: otherVersions.length > 0 ? otherVersions : null,
       isActive,
       oldImageUrls: application.application_images,
     };
@@ -158,6 +157,14 @@ export default function EditApplication({ application }) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // ✅ NOUVEAU: Handler pour supprimer une image des autres versions
+  const handleRemoveOtherVersion = (indexToRemove) => {
+    setOtherVersions((prev) =>
+      prev.filter((_, index) => index !== indexToRemove),
+    );
+    trackUpload('other_version_removed', { index: indexToRemove });
   };
 
   return (
@@ -329,32 +336,11 @@ export default function EditApplication({ application }) {
               <option value={2}>2 - Intermediate</option>
               <option value={3}>3 - Advanced</option>
               <option value={4}>4 - Professional</option>
-              <option value={5}>5 - Master</option>
             </select>
             {hasFieldError('level') && (
               <div className={styles.fieldError}>
                 <MdError className={styles.errorIcon} />
                 <span>{getFieldError('level')}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Other Versions */}
-          <div className={styles.inputGroup}>
-            <input
-              type="text"
-              name="otherVersions"
-              placeholder="Other Versions (comma-separated image IDs)"
-              value={otherVersions}
-              onChange={(e) => setOtherVersions(e.target.value)}
-              className={
-                hasFieldError('otherVersions') ? styles.inputError : ''
-              }
-            />
-            {hasFieldError('otherVersions') && (
-              <div className={styles.fieldError}>
-                <MdError className={styles.errorIcon} />
-                <span>{getFieldError('otherVersions')}</span>
               </div>
             )}
           </div>
@@ -451,7 +437,7 @@ export default function EditApplication({ application }) {
           </div>
         </div>
 
-        {/* Images */}
+        {/* Main Application Images */}
         <div className={styles.imageSection}>
           <h4>Application Images *</h4>
           <CldUploadWidget
@@ -479,7 +465,7 @@ export default function EditApplication({ application }) {
                   type="button"
                   disabled={isSubmitting}
                 >
-                  Add Image
+                  Add Main Image
                 </button>
               );
             }}
@@ -520,6 +506,85 @@ export default function EditApplication({ application }) {
             <div className={styles.fieldError}>
               <MdError className={styles.errorIcon} />
               <span>{getFieldError('imageUrls')}</span>
+            </div>
+          )}
+        </div>
+
+        {/* ✅ NOUVEAU: Other Versions Images Section */}
+        <div className={styles.imageSection}>
+          <h4>Other Versions Images (Optional)</h4>
+          <p className={styles.sectionDescription}>
+            Upload images showcasing different versions of your application
+            (different colors, styles, layouts, etc.)
+          </p>
+
+          <CldUploadWidget
+            signatureEndpoint="/api/dashboard/applications/add/sign-image"
+            onSuccess={(result) => {
+              setOtherVersions((prev) => [...prev, result?.info?.public_id]);
+              trackUpload('other_version_uploaded', {
+                imageId: result?.info?.public_id,
+              });
+            }}
+            options={{
+              folder: 'applications',
+              multiple: true,
+            }}
+          >
+            {({ open }) => {
+              function handleOnClick(e) {
+                e.preventDefault();
+                open();
+              }
+              return (
+                <button
+                  className={styles.addImage}
+                  onClick={handleOnClick}
+                  type="button"
+                  disabled={isSubmitting}
+                >
+                  {otherVersions.length === 0
+                    ? 'Add Version Image'
+                    : 'Add Another Version'}
+                </button>
+              );
+            }}
+          </CldUploadWidget>
+
+          {otherVersions.length > 0 && (
+            <>
+              <p className={styles.imageCount}>
+                {otherVersions.length} version image
+                {otherVersions.length > 1 ? 's' : ''} added
+              </p>
+              <div className={styles.images}>
+                {otherVersions.map((versionUrl, index) => (
+                  <div key={index} className={styles.imageContainer}>
+                    <Image
+                      src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/c_fill,w_200,h_150/${versionUrl}`}
+                      alt={`Version ${index + 1}`}
+                      width={200}
+                      height={150}
+                      className={styles.image}
+                    />
+                    <button
+                      type="button"
+                      className={styles.removeImage}
+                      onClick={() => handleRemoveOtherVersion(index)}
+                      disabled={isSubmitting}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {hasFieldError('otherVersions') && (
+            <div className={styles.fieldError}>
+              <MdError className={styles.errorIcon} />
+              <span>{getFieldError('otherVersions')}</span>
             </div>
           )}
         </div>

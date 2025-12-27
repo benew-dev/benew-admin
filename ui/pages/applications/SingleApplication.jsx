@@ -229,34 +229,37 @@ export default function SingleApplication({ data }) {
               </span>
             </p>
           </div>
-
-          {/* Other versions */}
-          {application.application_other_versions &&
-            Array.isArray(application.application_other_versions) &&
-            application.application_other_versions.length > 0 && (
-              <div className={styles.versionsContainer}>
-                <p>
-                  <strong>Other Versions:</strong>
-                </p>
-                <div className={styles.versionsList}>
-                  {application.application_other_versions.map(
-                    (imageId, index) => (
-                      <div key={index} className={styles.versionItem}>
-                        <Image
-                          src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/c_fill,w_150,h_100/${imageId}`}
-                          alt={`Version ${index + 1}`}
-                          width={150}
-                          height={100}
-                          className={styles.versionImage}
-                        />
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-            )}
         </div>
       </div>
+
+      {/* ✅ NOUVEAU: Other Versions Section */}
+      {application.application_other_versions &&
+        Array.isArray(application.application_other_versions) &&
+        application.application_other_versions.length > 0 && (
+          <div className={styles.otherVersionsSection}>
+            <h2 className={styles.otherVersionsTitle}>
+              Other Versions ({application.application_other_versions.length})
+            </h2>
+            <p className={styles.otherVersionsDescription}>
+              Different versions of this application showcasing various styles,
+              colors, and layouts
+            </p>
+            <div className={styles.otherVersionsGrid}>
+              {application.application_other_versions.map((imageId, index) => (
+                <div key={index} className={styles.versionCard}>
+                  <Image
+                    src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/c_fill,w_300,h_200/${imageId}`}
+                    alt={`Version ${index + 1}`}
+                    width={300}
+                    height={200}
+                    className={styles.versionImage}
+                  />
+                  <p className={styles.versionLabel}>Version {index + 1}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       {/* Actions */}
       <div className={styles.applicationActions}>
