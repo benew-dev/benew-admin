@@ -1,82 +1,61 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
+import { defineConfig, globalIgnores } from 'eslint/config';
+import nextVitals from 'eslint-config-next/core-web-vitals';
+import prettier from 'eslint-config-prettier/flat';
 
-import { FlatCompat } from "@eslint/eslintrc";
-import globals from "globals";
-import js from "@eslint/js";
-import reactPlugin from "eslint-plugin-react";
-import pluginNext from "@next/eslint-plugin-next";
-// import reactHooksPlugin from 'eslint-plugin-react-hooks';
-// import securityPlugin from 'eslint-plugin-security';
-// import importPlugin from 'eslint-plugin-import';
-// import optimizeRegexPlugin from 'eslint-plugin-optimize-regex';
-import prettierPlugin from "eslint-plugin-prettier";
+// ============================================================================
+// ESLINT CONFIG - NEXT.JS 16.1.1 + REACT 19
+// ============================================================================
+// Application: Admin Dashboard BENEW (5 utilisateurs/jour)
+// Date: Janvier 2026
+// Architecture: Next.js 16 + Better Auth + Sentry + Cloudinary
+// ============================================================================
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const eslintConfig = defineConfig([
+  // ===== 1. CONFIGURATION NEXT.JS COMPLÈTE =====
+  // Inclut automatiquement :
+  // - eslint-plugin-react (règles React)
+  // - eslint-plugin-react-hooks (règles Hooks)
+  // - @next/eslint-plugin-next (règles Next.js)
+  // - Core Web Vitals optimisations
+  ...nextVitals,
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-});
+  // ===== 2. PRETTIER (doit être en dernier) =====
+  // Désactive les règles ESLint qui entrent en conflit avec Prettier
+  prettier,
 
-// Créer une configuration qui imite le .eslintrc.js
-const eslintConfig = [
-  // Inclure les configurations étendues via l'adaptateur de compatibilité
-  ...compat.extends(
-    "eslint:recommended",
-    "plugin:react/recommended",
-    "plugin:prettier/recommended"
-    // 'next/core-web-vitals',
-    // 'plugin:react-hooks/recommended',
-    // 'plugin:security/recommended-legacy',
-  ),
-
-  // Appliquer à tous les fichiers JS/JSX
+  // ===== 3. RÈGLES PERSONNALISÉES =====
   {
-    files: ["**/*.{js,mjs,cjs,jsx}"],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-        ...globals.es2021,
-      },
-      parserOptions: {
-        ecmaVersion: "latest",
-        sourceType: "module",
-      },
-    },
-    // Configurations spécifiques qui complètent celles importées ci-dessus
-    plugins: {
-      react: reactPlugin,
-      "@next/next": pluginNext,
-      // 'react-hooks': reactHooksPlugin,
-      // security: securityPlugin,
-      // import: importPlugin,
-      // 'optimize-regex': optimizeRegexPlugin,
-      prettier: prettierPlugin,
-    },
     rules: {
-      "react/react-in-jsx-scope": 0,
-      ...pluginNext.configs.recommended.rules,
-      // 'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
-      "react/jsx-filename-extension": [1, { extensions: [".js", ".jsx"] }],
-      "react/prop-types": "off",
-      // 'no-console':
+      // ===== REACT =====
+      'react/react-in-jsx-scope': 'off', // Pas nécessaire avec Next.js
+      'react/prop-types': 'off', // On n'utilise pas PropTypes
+      'react/jsx-props-no-spreading': 'off', // Spreading OK pour notre use case
+      'react/forbid-dom-props': ['warn', { forbid: ['style'] }], // Encourager CSS modules
+      'react/jsx-filename-extension': [1, { extensions: ['.js', '.jsx'] }],
+
+      // ===== ESLINT CORE =====
+      'no-unused-vars':
+        process.env.NODE_ENV === 'production' ? 'error' : 'warn',
+      // 'no-console': // Décommenté si vous voulez bloquer console.log
       //   process.env.NODE_ENV === 'production'
       //     ? ['error', { allow: ['warn', 'error'] }]
       //     : 'off',
-      "no-unused-vars":
-        process.env.NODE_ENV === "production" ? "error" : "warn",
-      "jsx-a11y/anchor-is-valid": "off",
-      "react/jsx-props-no-spreading": "off",
+
+      // ===== NEXT.JS / ACCESSIBILITY =====
+      'jsx-a11y/anchor-is-valid': 'off', // Next.js Link gère ça correctement
+
+      // ===== PRETTIER =====
+      'prettier/prettier': 'warn', // Afficher warnings mais ne pas bloquer
+
+      // ===== RÈGLES ADDITIONNELLES (décommentez si besoin) =====
+
+      // React Hooks exhaustive-deps
       // 'react-hooks/exhaustive-deps': 'error',
-      // 'optimize-regex/optimize-regex': 'warn',
+
+      // Pas d'index comme key
       // 'react/no-array-index-key': 'error',
-      "react/forbid-dom-props": ["warn", { forbid: ["style"] }],
-      "prettier/prettier": "warn",
+
+      // Import order (nécessite eslint-plugin-import)
       // 'import/order': [
       //   'error',
       //   {
@@ -91,19 +70,104 @@ const eslintConfig = [
       //     'newlines-between': 'always',
       //   },
       // ],
+
+      // Optimisation regex (nécessite eslint-plugin-optimize-regex)
+      // 'optimize-regex/optimize-regex': 'warn',
+
+      // Sécurité (nécessite eslint-plugin-security)
+      // Déjà inclus si vous décommentez les plugins ci-dessous
     },
+
     settings: {
-      "import/resolver": {
-        alias: {
-          map: [["@", "./"]],
-          extensions: [".js", ".jsx", ".json"],
-        },
-      },
       react: {
-        version: "detect",
+        version: 'detect', // Détecte automatiquement la version de React
       },
+      // Import resolver (nécessite eslint-plugin-import)
+      // 'import/resolver': {
+      //   alias: {
+      //     map: [['@', './']],
+      //     extensions: ['.js', '.jsx', '.json'],
+      //   },
+      // },
     },
   },
-];
+
+  // ===== 4. FICHIERS À IGNORER =====
+  globalIgnores([
+    // ===== Build outputs =====
+    '.next/**',
+    'out/**',
+    'build/**',
+    'dist/**',
+
+    // ===== Dependencies =====
+    'node_modules/**',
+
+    // ===== Config files =====
+    'next-env.d.ts',
+    '*.config.js',
+    '*.config.mjs',
+    '*.config.ts',
+
+    // ===== Sentry =====
+    '.sentry-build-info',
+    'sentry.client.config.ts',
+    'sentry.server.config.ts',
+    'sentry.edge.config.ts',
+    'instrumentation.js',
+    'instrumentation-client.js',
+
+    // ===== Cache & Logs =====
+    '.turbo/**',
+    '.cache/**',
+    '*.log',
+    'npm-debug.log*',
+    'yarn-debug.log*',
+    'yarn-error.log*',
+
+    // ===== Fichiers publics =====
+    'public/**',
+  ]),
+]);
 
 export default eslintConfig;
+
+// ============================================================================
+// NOTES DE CONFIGURATION
+// ============================================================================
+//
+// PLUGINS INCLUS AUTOMATIQUEMENT VIA next/core-web-vitals :
+// - eslint-plugin-react
+// - eslint-plugin-react-hooks
+// - @next/eslint-plugin-next
+//
+// PLUGINS ADDITIONNELS (décommentez si besoin) :
+// Pour les activer, installez d'abord les packages :
+//
+// npm install --save-dev \
+//   eslint-plugin-security \
+//   eslint-plugin-import \
+//   eslint-plugin-optimize-regex
+//
+// Puis décommentez les règles correspondantes dans la section "rules" ci-dessus.
+//
+// ============================================================================
+// COMMANDES UTILES
+// ============================================================================
+//
+// Linter tout le projet :
+//   npm run lint
+//
+// Auto-fix les erreurs :
+//   npm run lint:fix
+//
+// Linter un fichier spécifique :
+//   npx eslint path/to/file.js
+//
+// Debug ESLint (voir quelle config s'applique) :
+//   npx eslint --debug path/to/file.js
+//
+// Voir la config effective pour un fichier :
+//   npx eslint --print-config path/to/file.js
+//
+// ============================================================================

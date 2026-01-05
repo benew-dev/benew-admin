@@ -1,3 +1,22 @@
+# Build outputs
 dist
+.next
+out
+build
+
+# Dependencies
 node_modules
+
+# Config files
 package.json
+package-lock.json
+
+# Cache
+.turbo
+.cache
+
+# Logs
+*.log
+
+# Sentry
+.sentry-build-info

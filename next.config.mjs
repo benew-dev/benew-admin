@@ -226,11 +226,6 @@ const nextConfig = {
     ];
   },
 
-  // Configuration TypeScript/ESLint
-  typescript: {
-    ignoreBuildErrors: false,
-  },
-
   // Output standalone pour déploiement (production uniquement)
   output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
 
