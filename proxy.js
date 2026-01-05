@@ -19,7 +19,7 @@ const pathCache = new Map();
 
 // ===== MIDDLEWARE =====
 
-export async function middleware(request) {
+export async function proxy(request) {
   const { pathname } = request.nextUrl;
 
   // Debug logs (seulement en dev)
