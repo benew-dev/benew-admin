@@ -40,7 +40,7 @@ export async function PUT(request, { params }) {
   let client;
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
-  const { id } = params;
+  const { id } = await params;
 
   logger.info('Edit application API called', { requestId, applicationId: id });
 

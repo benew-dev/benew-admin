@@ -38,7 +38,7 @@ export async function DELETE(request, { params }) {
   let client;
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
-  const { id } = params;
+  const { id } = await params;
   let cloudinaryOperations = 0;
 
   logger.info('Delete application API called', {
