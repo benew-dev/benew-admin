@@ -35,7 +35,7 @@ export async function DELETE(request, { params }) {
   let client;
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
-  const { id } = params;
+  const { id } = await params;
 
   logger.info('Delete platform API called', { requestId, platformId: id });
 
