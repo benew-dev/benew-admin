@@ -120,6 +120,8 @@ export default function EditApplication({ application }) {
 
       const data = await response.json();
 
+      console.log('Data: ', data);
+
       if (data.success) {
         trackForm('edit_application_successful', {
           applicationId: application.application_id,
