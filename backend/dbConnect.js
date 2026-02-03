@@ -44,13 +44,13 @@ function getPoolConfig() {
     // Retry automatique intégré au pool
     // Pas besoin de retry logic manuel !
 
-    ssl: process.env.DB_CA
-      ? {
-          require: true,
-          rejectUnauthorized: true,
-          ca: process.env.DB_CA,
-        }
-      : false,
+    // ssl: process.env.DB_CA
+    //   ? {
+    //       require: true,
+    //       rejectUnauthorized: true,
+    //       ca: process.env.DB_CA,
+    //     }
+    //   : false,
   };
 }
 
