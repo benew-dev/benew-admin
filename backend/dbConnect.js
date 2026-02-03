@@ -33,7 +33,7 @@ function getPoolConfig() {
     port: Number(process.env.PORT_NUMBER) || 5432,
 
     // ✅ AJOUT : Spécifier le schéma admin
-    // options: '-c search_path=admin',
+    options: '-c search_path=admin',
 
     // Config optimisée Vercel Serverless
     max: 5, // Max 5 connexions partagées (au lieu de 20)
