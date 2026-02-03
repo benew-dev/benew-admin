@@ -64,13 +64,13 @@ export function getPool() {
 
     // Error handler global
     pool.on('error', (err) => {
-      client.query('SET search_path TO admin, public');
       console.error(`[${getTimestamp()}] ❌ Pool Error:`, err.message);
       // Ne pas exit process, juste log
     });
 
     // Connect event (debug)
     pool.on('connect', () => {
+      client.query('SET search_path TO admin, public');
       console.log(`[${getTimestamp()}] ✅ New client connected to pool`);
     });
 
