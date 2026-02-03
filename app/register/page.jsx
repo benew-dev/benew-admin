@@ -40,24 +40,24 @@ export default async function RegisterPage({ searchParams }) {
   const errorParam = searchParams?.error;
 
   // ✅ OPTIONAL: Uncomment to require invitation token
-  if (!invitationToken) {
-    trackAuth('register_page_no_invitation_token', {}, 'warning');
+  // if (!invitationToken) {
+  //   trackAuth('register_page_no_invitation_token', {}, 'warning');
 
-    return (
-      <div className="container">
-        <h1>Admin Registration</h1>
-        <p
-          style={{
-            textAlign: 'center',
-            color: 'var(--textSoft)',
-            marginTop: '1rem',
-          }}
-        >
-          Registration is by invitation only. Please contact your administrator.
-        </p>
-      </div>
-    );
-  }
+  //   return (
+  //     <div className="container">
+  //       <h1>Admin Registration</h1>
+  //       <p
+  //         style={{
+  //           textAlign: 'center',
+  //           color: 'var(--textSoft)',
+  //           marginTop: '1rem',
+  //         }}
+  //       >
+  //         Registration is by invitation only. Please contact your administrator.
+  //       </p>
+  //     </div>
+  //   );
+  // }
 
   // Track registration page visit
   trackAuth('register_page_visited', {
