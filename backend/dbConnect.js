@@ -69,7 +69,7 @@ export function getPool() {
     });
 
     // Connect event (debug)
-    pool.on('connect', () => {
+    pool.on('connect', (client) => {
       client.query('SET search_path TO admin, public');
       console.log(`[${getTimestamp()}] ✅ New client connected to pool`);
     });
