@@ -98,18 +98,30 @@ export const videoAddingSchema = yup
     relatedApplicationId: yup
       .string()
       .nullable()
-      .matches(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      .test(
+        'uuid-or-empty',
         'Related application ID must be a valid UUID',
+        (value) => {
+          if (!value || value.trim() === '') return true;
+          return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            value.trim(),
+          );
+        },
       )
       .transform((value) => value?.toLowerCase().trim() || null),
 
     relatedTemplateId: yup
       .string()
       .nullable()
-      .matches(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      .test(
+        'uuid-or-empty',
         'Related template ID must be a valid UUID',
+        (value) => {
+          if (!value || value.trim() === '') return true;
+          return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+            value.trim(),
+          );
+        },
       )
       .transform((value) => value?.toLowerCase().trim() || null),
   })
@@ -159,15 +171,17 @@ export const videoUpdateSchema = yup.object().shape({
     .max(5000, 'Description must not exceed 5000 characters')
     .transform((value) => value?.trim() || null),
 
+  // Dans un UPDATE, cloudinaryId est optionnel (on ne remplace pas forcément la vidéo)
   cloudinaryId: yup
     .string()
-    .required('Cloudinary video ID is required')
+    .optional()
     .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid Cloudinary ID format')
     .max(500, 'Cloudinary ID must not exceed 500 characters'),
 
   thumbnailId: yup
     .string()
     .nullable()
+    .optional()
     .matches(/^[a-zA-Z0-9._/-]+$/, 'Invalid Cloudinary thumbnail ID format')
     .max(500, 'Thumbnail ID must not exceed 500 characters')
     .transform((value) => value?.trim() || null),
@@ -217,19 +231,26 @@ export const videoUpdateSchema = yup.object().shape({
   relatedApplicationId: yup
     .string()
     .nullable()
-    .matches(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      'Must be a valid UUID',
-    )
+    .optional()
+    // Tester seulement si une valeur non-vide est fournie
+    .test('uuid-or-empty', 'Must be a valid UUID', (value) => {
+      if (!value || value.trim() === '') return true;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        value.trim(),
+      );
+    })
     .transform((value) => value?.toLowerCase().trim() || null),
 
   relatedTemplateId: yup
     .string()
     .nullable()
-    .matches(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      'Must be a valid UUID',
-    )
+    .optional()
+    .test('uuid-or-empty', 'Must be a valid UUID', (value) => {
+      if (!value || value.trim() === '') return true;
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        value.trim(),
+      );
+    })
     .transform((value) => value?.toLowerCase().trim() || null),
 
   isActive: yup
