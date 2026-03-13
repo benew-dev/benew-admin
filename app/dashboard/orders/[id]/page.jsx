@@ -40,10 +40,8 @@ async function getOrderFromDatabase(orderId) {
 
     client = await getClient();
 
-    // ✅ REQUÊTE CORRIGÉE :
     // admin.orders ne contient PAS platform_name / platform_account_name / platform_account_number
     // Ces colonnes vivent dans admin.platforms — on les récupère via JOIN
-    // order_client = VARCHAR(255)[] → index [1]=nom, [2]=prénom, [3]=email, [4]=téléphone
     const orderQuery = `
       SELECT
         -- Commande
@@ -74,10 +72,10 @@ async function getOrderFromDatabase(orderId) {
 
         -- Plateforme (toutes les infos viennent d'ici)
         p.platform_name,
-        p.account_name    AS platform_account_name,
-        p.account_number  AS platform_account_number,
+        p.account_name   AS platform_account_name,
+        p.account_number AS platform_account_number,
         p.is_cash_payment,
-        p.description     AS platform_description
+        p.description    AS platform_description
 
       FROM admin.orders o
       JOIN catalog.applications a ON o.order_application_id = a.application_id
@@ -94,23 +92,25 @@ async function getOrderFromDatabase(orderId) {
 
     const row = orderResult.rows[0];
 
-    // Parser order_client : array PostgreSQL [nom, prénom, email, téléphone]
+    // ✅ PARSING CORRIGÉ selon le schéma réel :
+    // order_client VARCHAR(255)[] avec CHECK (array_length = 3)
+    // COMMENT: 'Informations client: [nom_complet, email, telephone]'
+    // → index [0] = nom_complet, [1] = email, [2] = telephone
+    // L'ancien code déstructurait en [lastName, firstName, email, phone]
+    // ce qui était faux et collait email+téléphone dans le nom affiché
     let clientInfo = {
-      lastName: 'N/A',
-      firstName: 'N/A',
+      fullName: 'N/A',
       email: 'N/A',
       phone: 'N/A',
-      fullName: 'N/A',
     };
+
     try {
-      if (Array.isArray(row.order_client) && row.order_client.length >= 3) {
-        const [lastName, firstName, email, phone = ''] = row.order_client;
+      if (Array.isArray(row.order_client) && row.order_client.length >= 2) {
+        const [fullName, email, phone = ''] = row.order_client;
         clientInfo = {
-          lastName: lastName || '',
-          firstName: firstName || '',
-          email: email || '',
-          phone: phone || '',
-          fullName: `${firstName || ''} ${lastName || ''}`.trim() || 'N/A',
+          fullName: fullName || 'N/A',
+          email: email || 'N/A',
+          phone: phone || 'N/A',
         };
       }
     } catch (e) {
@@ -169,6 +169,7 @@ async function getOrderFromDatabase(orderId) {
     };
 
     const responseTime = Date.now() - startTime;
+
     logger.info('Order fetch by ID successful', {
       orderId: cleanedOrderId.substring(0, 8),
       paymentStatus: sanitizedOrder.order_payment_status,
