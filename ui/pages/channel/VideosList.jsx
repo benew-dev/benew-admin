@@ -5,10 +5,11 @@ import { useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { MdAdd } from 'react-icons/md';
+import { MdAdd, MdPlayCircle } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/channel/videosList.module.css';
 import VideoFilters from '@/ui/components/dashboard/VideoFilters';
 import VideoSearch from '@/ui/components/dashboard/search/VideoSearch';
+import VideoPlayerModal from '@/ui/components/dashboard/VideoPlayerModal';
 import { getFilteredVideos } from '@/app/dashboard/channel/actions';
 import {
   trackUI,
@@ -41,6 +42,9 @@ export default function VideosList({ data }) {
   const [error, setError] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+
+  // État du modal vidéo
+  const [activeVideo, setActiveVideo] = useState(null);
 
   useEffect(() => {
     setVideos(data);
@@ -132,10 +136,27 @@ export default function VideosList({ data }) {
     router.push(path);
   };
 
+  // Ouvrir le modal avec la vidéo sélectionnée
+  const handleOpenPlayer = (video) => {
+    trackUI('video_player_opened', { videoId: video.video_id });
+    setActiveVideo(video);
+  };
+
+  // Fermer le modal
+  const handleClosePlayer = () => {
+    trackUI('video_player_closed', { videoId: activeVideo?.video_id });
+    setActiveVideo(null);
+  };
+
   const hasActiveFilters = Object.keys(currentFilters).length > 0;
 
   return (
     <div className={styles.videosContainer}>
+      {/* Modal vidéo (monté en dehors de la grid) */}
+      {activeVideo && (
+        <VideoPlayerModal video={activeVideo} onClose={handleClosePlayer} />
+      )}
+
       {/* Header */}
       <div className={styles.top}>
         <VideoSearch
@@ -196,7 +217,7 @@ export default function VideosList({ data }) {
                 </span>
               </div>
 
-              {/* Thumbnail */}
+              {/* Thumbnail avec bouton Play */}
               <div className={styles.videoThumbnail}>
                 {video.video_thumbnail_id ? (
                   <Image
@@ -211,12 +232,23 @@ export default function VideosList({ data }) {
                     <span>🎬</span>
                   </div>
                 )}
+
                 {/* Durée en overlay */}
                 {video.video_duration_seconds && (
                   <span className={styles.durationBadge}>
                     {formatDuration(video.video_duration_seconds)}
                   </span>
                 )}
+
+                {/* Bouton Play en overlay — cliquable uniquement sur la thumbnail */}
+                <button
+                  className={styles.playButton}
+                  onClick={() => handleOpenPlayer(video)}
+                  type="button"
+                  aria-label={`Watch ${video.video_title}`}
+                >
+                  <MdPlayCircle className={styles.playIcon} />
+                </button>
               </div>
 
               {/* Détails */}
