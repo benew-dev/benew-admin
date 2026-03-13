@@ -1,7 +1,4 @@
 /* ui/styling/dashboard/templates/templates.module.css */
-/* ============================================================================ */
-/* TEMPLATES PAGE STYLES - Version simplifiée sans template_color */
-/* ============================================================================ */
 
 .container {
   background-color: var(--bgSoft);
@@ -12,12 +9,14 @@
 
 /* ===== HEADER ===== */
 
+/* ✅ MODIFIÉ : gap pour search + filters + bouton */
 .top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 20px;
-  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .title {
@@ -63,10 +62,57 @@
   gap: 8px;
   transition: background-color 0.3s;
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .addButton:hover {
   background-color: #4a45a0;
+}
+
+/* ✅ NOUVEAU : Loading */
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  background-color: rgba(93, 87, 201, 0.1);
+  border: 1px solid rgba(93, 87, 201, 0.25);
+  border-radius: 8px;
+  color: #5d57c9;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.loadingSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(93, 87, 201, 0.3);
+  border-top-color: #5d57c9;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ✅ NOUVEAU : Error */
+.error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  background-color: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #991b1b;
+  font-size: 0.9rem;
 }
 
 /* ===== CONTENT ===== */
@@ -85,6 +131,47 @@
   border: 1px dashed #2e374a;
   border-radius: 8px;
   background-color: var(--bg);
+}
+
+/* ✅ NOUVEAU : No results (filtres actifs mais aucun résultat) */
+.noResults {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+  background-color: var(--bg);
+  border-radius: 8px;
+  color: var(--textSoft);
+  font-size: 1rem;
+  text-align: center;
+}
+
+.noResultsIcon {
+  font-size: 2.5rem;
+}
+
+.clearFiltersButton {
+  padding: 10px 20px;
+  background-color: transparent;
+  color: #5d57c9;
+  border: 1px solid #5d57c9;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.clearFiltersButton:hover:not(:disabled) {
+  background-color: rgba(93, 87, 201, 0.1);
+}
+
+.clearFiltersButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ===== GRID ===== */
@@ -485,7 +572,15 @@
     align-items: stretch;
   }
 
+  .top > * {
+    width: 100%;
+  }
+
   .headerActions {
+    justify-content: center;
+  }
+
+  .addButton {
     justify-content: center;
   }
 

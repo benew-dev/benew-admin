@@ -1,11 +1,14 @@
 // ui/pages/platforms/PlatformsList.jsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MdAdd } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/platforms/platforms.module.css';
+import PlatformsSearch from '@/ui/components/dashboard/search/PlatformsSearch';
+import PlatformFilters from '@/ui/components/dashboard/PlatformFilters';
+import { getFilteredPlatforms } from '@/app/dashboard/platforms/actions';
 import {
   trackUI,
   trackNavigation,
@@ -15,7 +18,10 @@ import {
 export default function PlatformsList({ data }) {
   const router = useRouter();
   const [platforms, setPlatforms] = useState(data);
+  const [isPending, startTransition] = useTransition();
+  const [currentFilters, setCurrentFilters] = useState({});
   const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setPlatforms(data);
@@ -26,6 +32,50 @@ export default function PlatformsList({ data }) {
     });
   }, [data]);
 
+  // ===== FILTRES =====
+  const handleFilterChange = (newFilters) => {
+    setCurrentFilters(newFilters);
+    setError(null);
+
+    trackUI('platform_filter_changed', {
+      filtersCount: Object.keys(newFilters).length,
+    });
+
+    startTransition(async () => {
+      try {
+        const filteredData = await getFilteredPlatforms(newFilters);
+        setPlatforms(filteredData);
+
+        trackUI('platform_filter_applied_successfully', {
+          resultsCount: filteredData.length,
+        });
+      } catch (err) {
+        console.error('Filter error:', err);
+        setError('Failed to filter platforms. Please try again.');
+        trackDatabaseError(err, 'filter_platforms_client');
+      }
+    });
+  };
+
+  const clearAllFilters = () => {
+    setCurrentFilters({});
+    setError(null);
+
+    trackUI('platform_filters_cleared');
+
+    startTransition(async () => {
+      try {
+        const allData = await getFilteredPlatforms({});
+        setPlatforms(allData);
+      } catch (err) {
+        console.error('Clear filters error:', err);
+        setError('Failed to clear filters. Please refresh the page.');
+        trackDatabaseError(err, 'clear_platform_filters_client');
+      }
+    });
+  };
+
+  // ===== DELETE =====
   const handleDelete = async (id, platformName) => {
     if (
       !confirm(`Are you sure you want to delete platform "${platformName}"?`)
@@ -55,19 +105,30 @@ export default function PlatformsList({ data }) {
       } else {
         throw new Error(data.message || 'Delete failed');
       }
-    } catch (error) {
-      console.error('Delete error:', error);
-      alert(error.message || 'Failed to delete platform. Please try again.');
-      trackDatabaseError(error, 'delete_platform_client', { platformId: id });
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert(err.message || 'Failed to delete platform. Please try again.');
+      trackDatabaseError(err, 'delete_platform_client', { platformId: id });
     } finally {
       setIsDeleting(false);
     }
   };
 
+  const hasActiveFilters = Object.keys(currentFilters).length > 0;
+
   return (
     <div className={styles.container}>
+      {/* Header */}
       <div className={styles.top}>
-        <h1>Payment Platforms</h1>
+        <PlatformsSearch
+          placeholder="Search for a platform..."
+          onFilterChange={handleFilterChange}
+          currentFilters={currentFilters}
+        />
+        <PlatformFilters
+          onFilterChange={handleFilterChange}
+          currentFilters={currentFilters}
+        />
         <Link
           href="/dashboard/platforms/add"
           onClick={() => trackNavigation('navigate_to_add_platform')}
@@ -78,6 +139,29 @@ export default function PlatformsList({ data }) {
         </Link>
       </div>
 
+      {/* Loading */}
+      {isPending && (
+        <div className={styles.loading}>
+          <span className={styles.loadingSpinner}></span>
+          Filtering platforms...
+        </div>
+      )}
+
+      {/* Erreurs */}
+      {error && (
+        <div className={styles.error}>
+          <span className={styles.errorIcon}>⚠️</span>
+          {error}
+          <button
+            className={styles.retryButton}
+            onClick={() => handleFilterChange(currentFilters)}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Grid */}
       <div className={styles.platformsGrid}>
         {platforms && platforms.length > 0 ? (
           platforms.map((platform) => (
@@ -89,7 +173,6 @@ export default function PlatformsList({ data }) {
                 <div className={styles.platformHeader}>
                   <div className={styles.titleGroup}>
                     <h2>{platform.platform_name}</h2>
-                    {/* ✅ NOUVEAU : Badge type (CASH ou Electronic) */}
                     <span
                       className={
                         platform.is_cash_payment
@@ -108,9 +191,7 @@ export default function PlatformsList({ data }) {
                 </div>
 
                 <div className={styles.platformInfo}>
-                  {/* ✅ MODIFIÉ : Affichage conditionnel selon type */}
                   {platform.is_cash_payment ? (
-                    // ====== AFFICHAGE CASH ======
                     <>
                       <div className={styles.infoRow}>
                         <span className={styles.label}>Type:</span>
@@ -161,7 +242,6 @@ export default function PlatformsList({ data }) {
                       )}
                     </>
                   ) : (
-                    // ====== AFFICHAGE ELECTRONIC ======
                     <>
                       <div className={styles.infoRow}>
                         <span className={styles.label}>Type:</span>
@@ -272,12 +352,27 @@ export default function PlatformsList({ data }) {
           ))
         ) : (
           <div className={styles.emptyState}>
-            <p>No payment platforms found.</p>
-            <Link href="/dashboard/platforms/add">
-              <button className={styles.addButton} type="button">
-                <MdAdd /> Add Your First Platform
+            <p>
+              {hasActiveFilters
+                ? 'No platforms match your current filters.'
+                : 'No payment platforms found.'}
+            </p>
+            {hasActiveFilters ? (
+              <button
+                className={styles.addButton}
+                onClick={clearAllFilters}
+                disabled={isPending}
+                type="button"
+              >
+                Clear All Filters
               </button>
-            </Link>
+            ) : (
+              <Link href="/dashboard/platforms/add">
+                <button className={styles.addButton} type="button">
+                  <MdAdd /> Add Your First Platform
+                </button>
+              </Link>
+            )}
           </div>
         )}
       </div>
