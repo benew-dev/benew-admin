@@ -7,6 +7,7 @@ import {
   MdAttachMoney,
   MdLogout,
   MdCreditCard,
+  MdVideoFile,
 } from 'react-icons/md';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -39,14 +40,14 @@ const menuItems = [
         icon: <MdShoppingBag />,
       },
       {
+        title: 'Chaines',
+        path: '/dashboard/channel',
+        icon: <MdVideoFile />,
+      },
+      {
         title: 'Orders',
         path: '/dashboard/orders',
         icon: <MdAttachMoney />,
-      },
-      {
-        title: 'Blog',
-        path: '/dashboard/blog',
-        icon: <MdShoppingBag />,
       },
       {
         title: 'Users',
