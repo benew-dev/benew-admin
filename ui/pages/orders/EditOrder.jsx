@@ -62,13 +62,9 @@ const EditOrder = ({ order }) => {
         setIsEditing(false);
         order.order_payment_status = currentStatus;
 
-        // Mettre à jour les dates selon le statut
-        if (result.order.paid_at) {
-          order.order_paid_at = result.order.paid_at;
-        }
-        if (result.order.cancelled_at) {
+        if (result.order.paid_at) order.order_paid_at = result.order.paid_at;
+        if (result.order.cancelled_at)
           order.order_cancelled_at = result.order.cancelled_at;
-        }
       } else {
         throw new Error('Échec de la mise à jour');
       }
@@ -91,21 +87,16 @@ const EditOrder = ({ order }) => {
     setMessage(null);
   };
 
-  const getStatusInfo = (status) => {
-    return (
-      statusOptions.find((option) => option.value === status) ||
-      statusOptions[0]
-    );
-  };
+  const getStatusInfo = (status) =>
+    statusOptions.find((option) => option.value === status) || statusOptions[0];
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('fr-FR', {
+  const formatPrice = (price) =>
+    new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(price);
-  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -120,8 +111,6 @@ const EditOrder = ({ order }) => {
 
   const currentStatusInfo = getStatusInfo(currentStatus);
   const StatusIcon = currentStatusInfo.icon;
-
-  // ✅ NOUVEAU: Calculer le total (prix + abonnement)
   const totalAmount = order.order_price + order.order_rent;
 
   return (
@@ -133,7 +122,7 @@ const EditOrder = ({ order }) => {
         </div>
       )}
 
-      {/* En-tête avec informations principales */}
+      {/* En-tête */}
       <div className={styles.header}>
         <div className={styles.orderInfo}>
           <div className={styles.orderIdSection}>
@@ -148,7 +137,6 @@ const EditOrder = ({ order }) => {
             </div>
           </div>
 
-          {/* ✅ MODIFIÉ: Afficher Prix + Abonnement + Total */}
           <div className={styles.priceSection}>
             <div className={styles.priceBreakdown}>
               <div className={styles.priceItem}>
@@ -171,7 +159,7 @@ const EditOrder = ({ order }) => {
           </div>
         </div>
 
-        {/* Section de statut avec édition */}
+        {/* Statut */}
         <div className={styles.statusSection}>
           <div className={styles.statusHeader}>
             <h3>Statut de paiement</h3>
@@ -198,9 +186,7 @@ const EditOrder = ({ order }) => {
                       className={`${styles.statusOption} ${
                         currentStatus === option.value ? styles.selected : ''
                       }`}
-                      style={{
-                        '--status-color': option.color,
-                      }}
+                      style={{ '--status-color': option.color }}
                     >
                       <input
                         type="radio"
@@ -291,8 +277,7 @@ const EditOrder = ({ order }) => {
 
           <div className={styles.productCard}>
             <div className={styles.productImage}>
-              {order.application.images &&
-              order.application.images.length > 0 ? (
+              {order.application.images?.length > 0 ? (
                 <CldImage
                   src={order.application.images[0]}
                   alt={order.application.name}
@@ -378,7 +363,7 @@ const EditOrder = ({ order }) => {
           </div>
         </div>
 
-        {/* ✅ MODIFIÉ: Section Paiement avec nouvelles colonnes */}
+        {/* Section Paiement */}
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <MdPayment className={styles.sectionIcon} />
@@ -386,43 +371,54 @@ const EditOrder = ({ order }) => {
           </div>
 
           <div className={styles.paymentCard}>
-            {/* Informations enregistrées dans la commande */}
+            {/* Paiement effectué par le client */}
             <div className={styles.paymentSubsection}>
               <h4 className={styles.subsectionTitle}>
                 <MdCreditCard className={styles.subsectionIcon} />
                 Paiement effectué
               </h4>
 
+              {/* ✅ CORRIGÉ : cashBadge sorti du fieldValue
+                  Avant : badge imbriqué dans <span fieldValue> → collé au texte,
+                  écrasé par text-align:right et word-break.
+                  Après : ligne dédiée au type de paiement avec badge séparé. */}
               <div className={styles.paymentField}>
                 <span className={styles.fieldLabel}>Plateforme :</span>
                 <span className={styles.fieldValue}>
                   {order.payment.platform_name}
-                  {order.platform.is_cash_payment && (
-                    <span className={styles.cashBadge}>💵 CASH</span>
-                  )}
                 </span>
               </div>
 
-              {order.payment.platform_account_name && (
+              {order.platform.is_cash_payment ? (
                 <div className={styles.paymentField}>
-                  <span className={styles.fieldLabel}>Nom du compte :</span>
-                  <span className={styles.fieldValue}>
-                    {order.payment.platform_account_name}
-                  </span>
+                  <span className={styles.fieldLabel}>Type :</span>
+                  <span className={styles.cashBadge}>💵 CASH</span>
                 </div>
-              )}
-
-              {order.payment.platform_account_number && (
-                <div className={styles.paymentField}>
-                  <span className={styles.fieldLabel}>Numéro du compte :</span>
-                  <span className={styles.fieldValue}>
-                    {order.payment.platform_account_number}
-                  </span>
-                </div>
+              ) : (
+                <>
+                  {order.payment.platform_account_name && (
+                    <div className={styles.paymentField}>
+                      <span className={styles.fieldLabel}>Nom du compte :</span>
+                      <span className={styles.fieldValue}>
+                        {order.payment.platform_account_name}
+                      </span>
+                    </div>
+                  )}
+                  {order.payment.platform_account_number && (
+                    <div className={styles.paymentField}>
+                      <span className={styles.fieldLabel}>
+                        Numéro du compte :
+                      </span>
+                      <span className={styles.fieldValue}>
+                        {order.payment.platform_account_number}
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-            {/* Informations de la plateforme (depuis admin.platforms) */}
+            {/* Plateforme enregistrée dans admin.platforms */}
             <div className={styles.paymentSubsection}>
               <h4 className={styles.subsectionTitle}>
                 <MdAttachMoney className={styles.subsectionIcon} />
@@ -455,7 +451,6 @@ const EditOrder = ({ order }) => {
                       </span>
                     </div>
                   )}
-
                   {order.platform.registered_account_number && (
                     <div className={styles.paymentField}>
                       <span className={styles.fieldLabel}>
