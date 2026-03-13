@@ -1,32 +1,65 @@
 // ui/pages/templates/ListTemplates.jsx - CLIENT COMPONENT
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
+import { MdAdd } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/templates/templates.module.css';
+import TemplatesSearch from '@/ui/components/dashboard/search/TemplatesSearch';
+import TemplateFilters from '@/ui/components/dashboard/TemplateFilters';
+import { getFilteredTemplates } from '@/app/dashboard/templates/actions';
 import {
   trackUI,
   trackNavigation,
   trackDatabaseError,
 } from '@/utils/monitoring';
-import Link from 'next/link';
-import { MdAdd } from 'react-icons/md';
 
 export default function ListTemplates({ data }) {
   const router = useRouter();
   const [templates, setTemplates] = useState(data || []);
+  const [isPending, startTransition] = useTransition();
+  const [currentFilters, setCurrentFilters] = useState({});
   const [isDeleting, setIsDeleting] = useState(null);
   const [error, setError] = useState(null);
 
-  // Track component mount
   useEffect(() => {
-    trackUI('list_templates_mounted', {
-      templatesCount: templates.length,
-    });
-  }, [templates.length]);
+    setTemplates(data || []);
+    trackUI('list_templates_mounted', { templatesCount: data?.length || 0 });
+  }, [data]);
 
-  // ===== DELETE TEMPLATE =====
+  // ===== FILTRES =====
+  const handleFilterChange = (newFilters) => {
+    setCurrentFilters(newFilters);
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        const filteredData = await getFilteredTemplates(newFilters);
+        setTemplates(filteredData);
+      } catch (err) {
+        console.error('Filter error:', err);
+        setError('Failed to filter templates. Please try again.');
+        trackDatabaseError(err, 'filter_templates_client');
+      }
+    });
+  };
+
+  const clearAllFilters = () => {
+    setCurrentFilters({});
+    setError(null);
+    startTransition(async () => {
+      try {
+        const allData = await getFilteredTemplates({});
+        setTemplates(allData);
+      } catch (err) {
+        setError('Failed to clear filters. Please refresh the page.');
+      }
+    });
+  };
+
+  // ===== DELETE =====
   const handleDelete = useCallback(async (templateId, templateName) => {
     if (
       !confirm(
@@ -39,19 +72,12 @@ export default function ListTemplates({ data }) {
 
     setIsDeleting(templateId);
     setError(null);
-
-    trackUI('delete_started', {
-      templateId,
-      templateName,
-    });
+    trackUI('delete_started', { templateId, templateName });
 
     try {
       const response = await fetch(
         `/api/dashboard/templates/${templateId}/delete`,
-        {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-        },
+        { method: 'DELETE', headers: { 'Content-Type': 'application/json' } },
       );
 
       const data = await response.json();
@@ -60,33 +86,20 @@ export default function ListTemplates({ data }) {
         const errorMsg =
           data.message || data.error || 'Failed to delete template';
         setError(errorMsg);
-
         trackUI(
           'delete_failed',
-          {
-            templateId,
-            status: response.status,
-            error: errorMsg,
-          },
+          { templateId, status: response.status, error: errorMsg },
           'error',
         );
-
         return;
       }
 
-      // Remove from UI
       setTemplates((prev) => prev.filter((t) => t.template_id !== templateId));
-
-      trackUI('delete_successful', {
-        templateId,
-        templateName,
-      });
-    } catch (error) {
-      console.error('Delete error:', error);
-      const errorMsg = 'Network error. Please try again.';
-      setError(errorMsg);
-
-      trackDatabaseError(error, 'delete_template_client', {
+      trackUI('delete_successful', { templateId, templateName });
+    } catch (err) {
+      console.error('Delete error:', err);
+      setError('Network error. Please try again.');
+      trackDatabaseError(err, 'delete_template_client', {
         templateId,
         templateName,
       });
@@ -98,17 +111,16 @@ export default function ListTemplates({ data }) {
   // ===== NAVIGATION =====
   const handleNavigate = useCallback(
     (path, templateId) => {
-      trackNavigation('template_navigation', {
-        path,
-        templateId,
-      });
+      trackNavigation('template_navigation', { path, templateId });
       router.push(path);
     },
     [router],
   );
 
-  // ===== EMPTY STATE =====
-  if (templates.length === 0) {
+  const hasActiveFilters = Object.keys(currentFilters).length > 0;
+
+  // ===== EMPTY STATE (aucun template en DB, pas de filtres actifs) =====
+  if (!isPending && templates.length === 0 && !hasActiveFilters) {
     return (
       <div className={styles.container}>
         <div className={styles.noTemplates}>
@@ -129,8 +141,17 @@ export default function ListTemplates({ data }) {
 
   return (
     <div className={styles.container}>
+      {/* ===== TOP BAR ===== */}
       <div className={styles.top}>
-        <h1>Templates</h1>
+        <TemplatesSearch
+          placeholder="Search for a template..."
+          onFilterChange={handleFilterChange}
+          currentFilters={currentFilters}
+        />
+        <TemplateFilters
+          onFilterChange={handleFilterChange}
+          currentFilters={currentFilters}
+        />
         <Link
           href="/dashboard/templates/add"
           onClick={() => trackNavigation('navigate_to_add_template')}
@@ -141,26 +162,23 @@ export default function ListTemplates({ data }) {
         </Link>
       </div>
 
-      {/* Global Error */}
+      {/* Loading */}
+      {isPending && (
+        <div className={styles.loading}>
+          <span className={styles.loadingSpinner}></span>
+          Filtering templates...
+        </div>
+      )}
+
+      {/* Error */}
       {error && (
-        <div
-          style={{
-            padding: '12px 16px',
-            marginBottom: '20px',
-            backgroundColor: '#fee2e2',
-            color: '#991b1b',
-            borderRadius: '8px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-          role="alert"
-        >
+        <div className={styles.error} role="alert">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
             aria-label="Dismiss error"
             style={{
+              marginLeft: 'auto',
               background: 'none',
               border: 'none',
               color: '#991b1b',
@@ -177,114 +195,126 @@ export default function ListTemplates({ data }) {
       {/* Templates Grid */}
       <div className={styles.bottom}>
         <div className={styles.grid}>
-          {templates.map((template) => (
-            <article
-              key={template.template_id}
-              className={`${styles.card} ${template.is_active ? styles.activeCard : styles.inactiveCard}`}
-            >
-              {/* Template Image */}
-              <div className={styles.imageContainer}>
-                {template.template_images?.[0] ? (
-                  <Image
-                    src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/c_fill,w_300,h_200/${template.template_images[0]}`}
-                    alt={template.template_name}
-                    width={300}
-                    height={200}
-                    className={styles.templateImage}
-                  />
-                ) : (
-                  <div className={styles.noImage}>No Image</div>
-                )}
-
-                {/* Status Badge */}
-                <span
-                  className={`${styles.statusBadge} ${template.is_active ? styles.activeBadge : styles.inactiveBadge}`}
-                >
-                  {template.is_active ? '● Active' : '● Inactive'}
-                </span>
-              </div>
-
-              {/* Card Content */}
-              <div className={styles.cardContent}>
-                {/* Template Name & Platforms */}
-                <div className={styles.informations}>
-                  <h3 className={styles.templateName}>
-                    {template.template_name}
-                  </h3>
-                  <div className={styles.platforms}>
-                    {template.template_has_web && '🌐'}
-                    {template.template_has_mobile && '📱'}
-                  </div>
+          {templates.length > 0 ? (
+            templates.map((template) => (
+              <article
+                key={template.template_id}
+                className={`${styles.card} ${template.is_active ? styles.activeCard : styles.inactiveCard}`}
+              >
+                {/* Image */}
+                <div className={styles.imageContainer}>
+                  {template.template_images?.[0] ? (
+                    <Image
+                      src={`https://res.cloudinary.com/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload/c_fill,w_300,h_200/${template.template_images[0]}`}
+                      alt={template.template_name}
+                      width={300}
+                      height={200}
+                      className={styles.templateImage}
+                    />
+                  ) : (
+                    <div className={styles.noImage}>No Image</div>
+                  )}
+                  <span
+                    className={`${styles.statusBadge} ${template.is_active ? styles.activeBadge : styles.inactiveBadge}`}
+                  >
+                    {template.is_active ? '● Active' : '● Inactive'}
+                  </span>
                 </div>
 
-                {/* Template Stats */}
-                <div className={styles.templateStats}>
-                  <div className={styles.stat}>
-                    <span className={styles.statIcon}>🖼️</span>
-                    <span className={styles.statValue}>
-                      {template.template_images?.length || 0}
-                    </span>
-                    <span className={styles.statLabel}>
-                      image{template.template_images?.length !== 1 ? 's' : ''}
-                    </span>
+                {/* Card Content */}
+                <div className={styles.cardContent}>
+                  <div className={styles.informations}>
+                    <h3 className={styles.templateName}>
+                      {template.template_name}
+                    </h3>
+                    <div className={styles.platforms}>
+                      {template.template_has_web && '🌐'}
+                      {template.template_has_mobile && '📱'}
+                    </div>
                   </div>
-                  {template.sales_count > 0 && (
+
+                  <div className={styles.templateStats}>
                     <div className={styles.stat}>
-                      <span className={styles.statIcon}>💰</span>
+                      <span className={styles.statIcon}>🖼️</span>
                       <span className={styles.statValue}>
-                        {template.sales_count}
+                        {template.template_images?.length || 0}
                       </span>
                       <span className={styles.statLabel}>
-                        sale{template.sales_count !== 1 ? 's' : ''}
+                        image{template.template_images?.length !== 1 ? 's' : ''}
                       </span>
                     </div>
-                  )}
-                </div>
+                    {template.sales_count > 0 && (
+                      <div className={styles.stat}>
+                        <span className={styles.statIcon}>💰</span>
+                        <span className={styles.statValue}>
+                          {template.sales_count}
+                        </span>
+                        <span className={styles.statLabel}>
+                          sale{template.sales_count !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                {/* Actions */}
-                <div className={styles.actions}>
-                  {/* Edit */}
-                  <button
-                    onClick={() =>
-                      handleNavigate(
-                        `/dashboard/templates/${template.template_id}`,
-                        template.template_id,
-                      )
-                    }
-                    className={`${styles.actionButton} ${styles.editButton}`}
-                    aria-label={`Edit ${template.template_name}`}
-                    title="Edit template"
-                  >
-                    ✏️
-                  </button>
-
-                  {/* Delete */}
-                  <button
-                    onClick={() =>
-                      handleDelete(template.template_id, template.template_name)
-                    }
-                    disabled={
-                      isDeleting === template.template_id || template.is_active
-                    }
-                    className={`${styles.actionButton} ${styles.deleteButton} ${
-                      (isDeleting === template.template_id ||
-                        template.is_active) &&
-                      styles.disabledButton
-                    }`}
-                    aria-label={`Delete ${template.template_name}`}
-                    aria-busy={isDeleting === template.template_id}
-                    title={
-                      template.is_active
-                        ? 'Deactivate template before deleting'
-                        : 'Delete template'
-                    }
-                  >
-                    {isDeleting === template.template_id ? '⏳' : '🗑️'}
-                  </button>
+                  <div className={styles.actions}>
+                    <button
+                      onClick={() =>
+                        handleNavigate(
+                          `/dashboard/templates/${template.template_id}`,
+                          template.template_id,
+                        )
+                      }
+                      className={`${styles.actionButton} ${styles.editButton}`}
+                      aria-label={`Edit ${template.template_name}`}
+                      title="Edit template"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleDelete(
+                          template.template_id,
+                          template.template_name,
+                        )
+                      }
+                      disabled={
+                        isDeleting === template.template_id ||
+                        template.is_active
+                      }
+                      className={`${styles.actionButton} ${styles.deleteButton} ${
+                        isDeleting === template.template_id ||
+                        template.is_active
+                          ? styles.disabledButton
+                          : ''
+                      }`}
+                      aria-label={`Delete ${template.template_name}`}
+                      aria-busy={isDeleting === template.template_id}
+                      title={
+                        template.is_active
+                          ? 'Deactivate template before deleting'
+                          : 'Delete template'
+                      }
+                    >
+                      {isDeleting === template.template_id ? '⏳' : '🗑️'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            ))
+          ) : (
+            // Filtres actifs mais aucun résultat
+            <div className={styles.noResults}>
+              <div className={styles.noResultsIcon}>📋</div>
+              <p>No templates match your current filters.</p>
+              <button
+                className={styles.clearFiltersButton}
+                onClick={clearAllFilters}
+                disabled={isPending}
+              >
+                Clear All Filters
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
