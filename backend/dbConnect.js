@@ -39,7 +39,7 @@ function getPoolConfig() {
     max: 5, // Max 5 connexions partagées (au lieu de 20)
     min: 0, // Min 0 (serverless = pas de connexions idle)
     idleTimeoutMillis: 30000, // Close idle après 30s (économie ressources)
-    connectionTimeoutMillis: 10000, // Timeout 5s pour connexion
+    connectionTimeoutMillis: 5000, // Timeout 5s pour connexion
 
     // Retry automatique intégré au pool
     // Pas besoin de retry logic manuel !
