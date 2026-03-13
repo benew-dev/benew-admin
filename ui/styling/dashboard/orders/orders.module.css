@@ -1,13 +1,316 @@
-/* ===== CONTAINER PRIX ET ABONNEMENT ===== */
+/* ui/styling/dashboard/orders/orders.module.css */
+
+/* ===== CONTAINER ===== */
+
+.container {
+  background-color: var(--bgSoft);
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ===== STATS HEADER ===== */
+
+.header {
+  width: 100%;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.statCard {
+  background-color: var(--bg);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s;
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+}
+
+.statIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: rgba(93, 87, 201, 0.15);
+  color: #5d57c9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.statContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.statValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statLabel {
+  font-size: 0.72rem;
+  color: var(--textSoft);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* ===== TOOLBAR ===== */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.searchSection {
+  flex: 1;
+  min-width: 200px;
+}
+
+.searchWrapper {
+  width: 100%;
+}
+
+.filtersSection {
+  flex-shrink: 0;
+}
+
+/* ===== LOADING ===== */
+
+.loadingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background-color: rgba(93, 87, 201, 0.1);
+  border: 1px solid rgba(93, 87, 201, 0.25);
+  border-radius: 8px;
+  color: #5d57c9;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.loadingIcon {
+  font-size: 18px;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== RESULTS HEADER ===== */
+
+.resultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.resultsCount {
+  font-size: 0.85rem;
+  color: var(--textSoft);
+  font-weight: 500;
+}
+
+/* ===== ORDERS LIST & GRID ===== */
+
+.ordersList {
+  width: 100%;
+}
+
+.ordersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+/* ===== ORDER CARD ===== */
+
+.orderCard {
+  background-color: var(--bg);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+}
+
+.orderCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Card Header */
+.orderHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.orderMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.orderId {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  font-family: monospace;
+}
+
+.orderDate {
+  font-size: 0.75rem;
+  color: var(--textSoft);
+}
+
+/* Status badge */
+.orderStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.statusText {
+  white-space: nowrap;
+}
+
+.statusPaid {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.statusPending {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.statusRefunded {
+  background-color: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.statusFailed {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Status icons */
+.statusIconPaid {
+  color: #10b981;
+  font-size: 16px;
+}
+.statusIconPending {
+  color: #f59e0b;
+  font-size: 16px;
+}
+.statusIconRefunded {
+  color: #6366f1;
+  font-size: 16px;
+}
+.statusIconFailed {
+  color: #ef4444;
+  font-size: 16px;
+}
+
+/* Card Body */
+.orderBody {
+  padding: 16px;
+  flex: 1;
+}
+
+.productSection {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.productImage {
+  flex-shrink: 0;
+}
+
+.orderImage {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.productInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.productName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.productCategory {
+  font-size: 0.75rem;
+  color: var(--textSoft);
+  text-transform: capitalize;
+  margin: 0 0 8px 0;
+}
+
+/* ===== PRIX & ABONNEMENT ===== */
 
 .priceContainer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   margin-top: 8px;
-  padding: 10px;
+  padding: 8px 10px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
+  border-radius: 6px;
   border-left: 3px solid #10b981;
 }
 
@@ -16,26 +319,26 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .priceLabel,
 .rentLabel {
-  font-size: 11px;
+  font-size: 0.7rem;
   color: var(--textSoft);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 }
 
 .priceValue {
-  font-size: 16px;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #10b981;
 }
 
 .rentValue {
-  font-size: 14px;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #6366f1;
 }
@@ -43,27 +346,146 @@
 /* ===== BADGE PLATEFORME ===== */
 
 .platformBadge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 8px 12px;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 5px 10px;
   background: rgba(79, 70, 229, 0.1);
-  border: 1px solid rgba(79, 70, 229, 0.3);
-  border-radius: 8px;
-  width: fit-content;
+  border: 1px solid rgba(79, 70, 229, 0.25);
+  border-radius: 6px;
 }
 
 .platformIcon {
-  font-size: 16px;
+  font-size: 14px;
   color: #4f46e5;
+  flex-shrink: 0;
 }
 
 .platformName {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text);
-  letter-spacing: 0.3px;
+}
+
+/* ===== CARD ACTIONS ===== */
+
+.orderActions {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.detailsButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background-color: rgba(93, 87, 201, 0.15);
+  color: #5d57c9;
+  border: 1px solid rgba(93, 87, 201, 0.3);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  flex: 1;
+  justify-content: center;
+}
+
+.detailsButton:hover {
+  background-color: rgba(93, 87, 201, 0.25);
+  border-color: rgba(93, 87, 201, 0.5);
+}
+
+.arrowIcon {
+  font-size: 16px;
+  margin-left: auto;
+}
+
+.statusButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  justify-content: center;
+}
+
+.statusButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.statusButtonUnpaid {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.statusButtonUnpaid:hover:not(:disabled) {
+  background-color: rgba(16, 185, 129, 0.25);
+}
+
+.statusButtonPaid {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+.statusButtonPaid:hover:not(:disabled) {
+  background-color: rgba(99, 102, 241, 0.25);
+}
+
+.statusButtonRefunded {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.statusButtonRefunded:hover:not(:disabled) {
+  background-color: rgba(245, 158, 11, 0.25);
+}
+
+.statusButtonFailed {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.statusButtonFailed:hover:not(:disabled) {
+  background-color: rgba(245, 158, 11, 0.25);
+}
+
+/* Status select dropdown */
+.statusDropdown {
+  width: 100%;
+}
+
+.statusSelect {
+  width: 100%;
+  padding: 8px 12px;
+  background-color: var(--bgSoft);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.statusSelect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ===== FALLBACK IMAGE ===== */
@@ -71,20 +493,47 @@
 .noImage {
   width: 80px;
   height: 80px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-size: 28px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.noImage:hover {
-  transform: scale(1.05);
-  border-color: rgba(79, 70, 229, 0.5);
+/* ===== EMPTY STATE ===== */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background-color: var(--bg);
+  border-radius: 10px;
+  text-align: center;
+  gap: 12px;
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  color: var(--textSoft);
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.emptyDescription {
+  font-size: 0.9rem;
+  color: var(--textSoft);
+  margin: 0;
 }
 
 /* ===== NOTIFICATIONS D'ERREUR ===== */
@@ -93,11 +542,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 24px;
-  background: rgba(239, 68, 68, 0.1);
+  padding: 14px 18px;
+  background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 8px;
-  margin: 16px 24px;
   animation: slideDown 0.3s ease-out;
 }
 
@@ -109,7 +557,7 @@
 
 .errorMessage {
   flex: 1;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: #ef4444;
   font-weight: 500;
   line-height: 1.4;
@@ -125,8 +573,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
   font-size: 18px;
+  flex-shrink: 0;
 }
 
 .errorDismiss:hover {
@@ -144,97 +593,54 @@
   }
 }
 
-/* ===== RESPONSIVE POUR NOUVELLES SECTIONS ===== */
+/* ===== RESPONSIVE ===== */
 
 @media (max-width: 768px) {
-  .priceContainer {
-    padding: 8px;
+  .statsGrid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .priceRow,
-  .rentRow {
+  .ordersGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    align-items: stretch;
   }
 
-  .priceValue {
-    font-size: 14px;
+  .searchSection {
+    min-width: unset;
   }
 
-  .rentValue {
-    font-size: 13px;
+  .actionButtons {
+    flex-direction: column;
   }
 
-  .platformBadge {
-    padding: 6px 10px;
-    margin-top: 8px;
-  }
-
-  .platformIcon {
-    font-size: 14px;
-  }
-
-  .platformName {
-    font-size: 11px;
-  }
-
-  .noImage {
+  .detailsButton,
+  .statusButton {
+    flex: unset;
     width: 100%;
-    height: 200px;
-    font-size: 36px;
-  }
-
-  .errorNotification {
-    margin: 12px 16px;
-    padding: 12px 16px;
-    gap: 10px;
-  }
-
-  .errorMessage {
-    font-size: 13px;
   }
 }
 
 @media (max-width: 480px) {
-  .priceContainer {
-    padding: 6px;
-    gap: 4px;
-  }
-
-  .priceLabel,
-  .rentLabel {
-    font-size: 10px;
-  }
-
-  .priceValue {
-    font-size: 13px;
-  }
-
-  .rentValue {
-    font-size: 12px;
-  }
-
-  .platformBadge {
-    padding: 5px 8px;
-    gap: 6px;
-  }
-
-  .platformIcon {
-    font-size: 13px;
-  }
-
-  .platformName {
-    font-size: 10px;
-  }
-
-  .errorNotification {
-    flex-direction: column;
-    align-items: flex-start;
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
   }
 
-  .errorDismiss {
-    align-self: flex-end;
+  .statCard {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .statValue {
+    font-size: 0.95rem;
+  }
+
+  .container {
+    padding: 14px;
+    gap: 14px;
   }
 }
