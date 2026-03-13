@@ -1,3 +1,4 @@
+// app/dashboard/orders/[id]/page.jsx
 import EditOrder from '@/ui/pages/orders/EditOrder';
 import { redirect, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
@@ -13,173 +14,97 @@ import {
 export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
-/**
- * Valide un UUID pour les commandes
- */
 function validateOrderId(orderId) {
-  if (!orderId || typeof orderId !== 'string') {
-    return false;
-  }
-
+  if (!orderId || typeof orderId !== 'string') return false;
   const uuidRegex =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(orderId);
 }
 
-/**
- * Nettoie et valide un UUID
- */
 function cleanOrderUUID(orderId) {
-  if (!orderId || typeof orderId !== 'string') {
-    return null;
-  }
-
+  if (!orderId || typeof orderId !== 'string') return null;
   const cleaned = orderId.trim().toLowerCase();
-
-  if (validateOrderId(cleaned)) {
-    return cleaned;
-  }
-
-  return null;
+  return validateOrderId(cleaned) ? cleaned : null;
 }
 
-/**
- * Récupérer une commande spécifique depuis la base de données
- * ✅ ADAPTÉ: Utilise les nouvelles colonnes de admin.orders
- */
 async function getOrderFromDatabase(orderId) {
   let client;
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
 
-  logger.info('Order by ID fetch process started', {
-    requestId,
-    orderId: orderId || 'missing',
-  });
-
   try {
-    // ===== VALIDATION DE L'ID =====
-    if (!orderId) {
-      logger.warn('Order ID parameter missing', { requestId });
-      return null;
-    }
+    if (!orderId) return null;
 
     const cleanedOrderId = cleanOrderUUID(orderId);
-    if (!cleanedOrderId) {
-      logger.warn('Order ID format invalid', {
-        requestId,
-        providedId: orderId.substring(0, 10),
-      });
-      return null;
-    }
+    if (!cleanedOrderId) return null;
 
-    // ===== CONNEXION BASE DE DONNÉES =====
-    try {
-      client = await getClient();
-    } catch (dbConnectionError) {
-      logger.error('Database Connection Error during order fetch by ID', {
-        error: dbConnectionError.message,
-        requestId,
-        orderId: cleanedOrderId.substring(0, 8),
-      });
+    client = await getClient();
 
-      trackDatabaseError(dbConnectionError, 'order_by_id_db_connection', {
-        requestId,
-        orderId: cleanedOrderId.substring(0, 8),
-      });
+    // ✅ REQUÊTE CORRIGÉE :
+    // admin.orders ne contient PAS platform_name / platform_account_name / platform_account_number
+    // Ces colonnes vivent dans admin.platforms — on les récupère via JOIN
+    // order_client = VARCHAR(255)[] → index [1]=nom, [2]=prénom, [3]=email, [4]=téléphone
+    const orderQuery = `
+      SELECT
+        -- Commande
+        o.order_id,
+        o.order_client,
+        o.order_platform_id,
+        o.order_application_id,
+        o.order_payment_name,
+        o.order_payment_number,
+        o.order_price,
+        o.order_rent,
+        o.order_payment_status,
+        o.order_cancel_reason,
+        o.order_cancelled_at,
+        o.order_paid_at,
+        o.order_created,
+        o.order_updated,
 
-      return null;
-    }
+        -- Application
+        a.application_name,
+        a.application_category,
+        a.application_images,
+        a.application_description,
+        a.application_fee,
+        a.application_rent,
+        a.application_link,
+        a.application_level,
 
-    // ===== EXÉCUTION DE LA REQUÊTE =====
-    let orderResult;
-    try {
-      // ✅ MODIFIÉ: Requête avec les nouvelles colonnes
-      const orderQuery = `
-        SELECT 
-          -- Données de la commande
-          o.order_id,
-          o.order_client,
-          o.order_platform_id,
-          o.order_application_id,
-          
-          -- ✅ NOUVEAU: Informations plateforme de paiement
-          o.platform_name,
-          o.platform_account_name,
-          o.platform_account_number,
-          
-          -- ✅ NOUVEAU: Prix d'acquisition ET abonnement mensuel
-          o.order_price,
-          o.order_rent,
-          
-          o.order_payment_status,
-          o.order_cancel_reason,
-          o.order_cancelled_at,
-          o.order_paid_at,
-          o.order_created,
-          o.order_updated,
-          
-          -- Données de l'application
-          a.application_name,
-          a.application_category,
-          a.application_images,
-          a.application_description,
-          a.application_fee,
-          a.application_rent,
-          a.application_link,
-          a.application_level,
-          
-          -- Données de la plateforme (depuis admin.platforms)
-          p.platform_name as platform_full_name,
-          p.account_name as platform_registered_account_name,
-          p.account_number as platform_registered_account_number,
-          p.is_cash_payment,
-          p.description as platform_description
-          
-        FROM admin.orders o
-        JOIN catalog.applications a ON o.order_application_id = a.application_id
-        JOIN admin.platforms p ON o.order_platform_id = p.platform_id
-        WHERE o.order_id = $1
-      `;
+        -- Plateforme (toutes les infos viennent d'ici)
+        p.platform_name,
+        p.account_name    AS platform_account_name,
+        p.account_number  AS platform_account_number,
+        p.is_cash_payment,
+        p.description     AS platform_description
 
-      orderResult = await client.query(orderQuery, [cleanedOrderId]);
-    } catch (queryError) {
-      logger.error('Order Fetch By ID Query Error', {
-        error: queryError.message,
-        code: queryError.code,
-        orderId: cleanedOrderId.substring(0, 8),
-        requestId,
-      });
+      FROM admin.orders o
+      JOIN catalog.applications a ON o.order_application_id = a.application_id
+      JOIN admin.platforms p       ON o.order_platform_id   = p.platform_id
+      WHERE o.order_id = $1
+    `;
 
-      trackDatabaseError(queryError, 'order_by_id_query', {
-        requestId,
-        orderId: cleanedOrderId.substring(0, 8),
-        table: 'admin.orders',
-      });
+    const orderResult = await client.query(orderQuery, [cleanedOrderId]);
 
-      if (client) await client.cleanup();
-      return null;
-    }
-
-    // ===== VÉRIFICATION EXISTENCE =====
     if (orderResult.rows.length === 0) {
-      logger.warn('Order not found', {
-        requestId,
-        orderId: cleanedOrderId.substring(0, 8),
-      });
-
-      if (client) await client.cleanup();
+      await client.cleanup();
       return null;
     }
 
-    // ===== FORMATAGE ET SANITISATION =====
-    const orderData = orderResult.rows[0];
+    const row = orderResult.rows[0];
 
-    // Parser les données client
-    let clientInfo = null;
+    // Parser order_client : array PostgreSQL [nom, prénom, email, téléphone]
+    let clientInfo = {
+      lastName: 'N/A',
+      firstName: 'N/A',
+      email: 'N/A',
+      phone: 'N/A',
+      fullName: 'N/A',
+    };
     try {
-      if (orderData.order_client && Array.isArray(orderData.order_client)) {
-        const [lastName, firstName, email, phone] = orderData.order_client;
+      if (Array.isArray(row.order_client) && row.order_client.length >= 3) {
+        const [lastName, firstName, email, phone = ''] = row.order_client;
         clientInfo = {
           lastName: lastName || '',
           firstName: firstName || '',
@@ -188,89 +113,65 @@ async function getOrderFromDatabase(orderId) {
           fullName: `${firstName || ''} ${lastName || ''}`.trim() || 'N/A',
         };
       }
-    } catch (clientParseError) {
-      logger.warn('Failed to parse client data', {
+    } catch (e) {
+      logger.warn('Failed to parse order_client', {
         requestId,
-        error: clientParseError.message,
-        orderId: cleanedOrderId.substring(0, 8),
+        error: e.message,
       });
-
-      clientInfo = {
-        lastName: 'N/A',
-        firstName: 'N/A',
-        email: 'N/A',
-        phone: 'N/A',
-        fullName: 'N/A',
-      };
     }
 
-    // ✅ MODIFIÉ: Sanitiser avec les nouvelles colonnes
     const sanitizedOrder = {
-      // Informations de base
-      order_id: orderData.order_id,
-      order_payment_status: orderData.order_payment_status,
-      order_cancel_reason: orderData.order_cancel_reason || null,
-      order_cancelled_at: orderData.order_cancelled_at,
-      order_paid_at: orderData.order_paid_at,
-      order_created: orderData.order_created,
-      order_updated: orderData.order_updated,
+      order_id: row.order_id,
+      order_payment_status: row.order_payment_status,
+      order_cancel_reason: row.order_cancel_reason || null,
+      order_cancelled_at: row.order_cancelled_at,
+      order_paid_at: row.order_paid_at,
+      order_created: row.order_created,
+      order_updated: row.order_updated,
+      order_price: parseFloat(row.order_price) || 0,
+      order_rent: parseFloat(row.order_rent) || 0,
 
-      // ✅ NOUVEAU: Prix ET abonnement
-      order_price: parseFloat(orderData.order_price) || 0,
-      order_rent: parseFloat(orderData.order_rent) || 0,
-
-      // Informations client
       client: clientInfo,
 
-      // ✅ NOUVEAU: Informations de paiement depuis admin.orders
+      // Informations de paiement fournies par le client lors de la commande
       payment: {
-        // Données enregistrées dans la commande
-        platform_name: orderData.platform_name,
-        platform_account_name: orderData.platform_account_name || null,
-        // Masquer partiellement le numéro de compte
-        platform_account_number: orderData.platform_account_number
-          ? `${orderData.platform_account_number.slice(0, 3)}***${orderData.platform_account_number.slice(-2)}`
+        platform_name: row.platform_name,
+        platform_account_name: row.order_payment_name || null,
+        platform_account_number: row.order_payment_number
+          ? `${row.order_payment_number.slice(0, 3)}***${row.order_payment_number.slice(-2)}`
           : null,
-        platform_id: orderData.order_platform_id,
+        platform_id: row.order_platform_id,
       },
 
-      // Informations de l'application
-      application: {
-        id: orderData.order_application_id,
-        name: orderData.application_name || '[No Name]',
-        category: orderData.application_category,
-        images: orderData.application_images,
-        description: orderData.application_description,
-        fee: parseFloat(orderData.application_fee) || 0,
-        rent: parseFloat(orderData.application_rent) || 0,
-        link: orderData.application_link,
-        level: orderData.application_level,
-      },
-
-      // ✅ NOUVEAU: Informations de la plateforme (depuis admin.platforms)
+      // Informations de la plateforme enregistrée dans admin.platforms
       platform: {
-        id: orderData.order_platform_id,
-        name: orderData.platform_full_name || '[No Name]',
-        is_cash_payment: orderData.is_cash_payment || false,
-        description: orderData.platform_description || null,
-        // Comptes enregistrés dans admin.platforms (pour comparaison/affichage)
-        registered_account_name:
-          orderData.platform_registered_account_name || null,
-        registered_account_number: orderData.platform_registered_account_number
-          ? `${orderData.platform_registered_account_number.slice(0, 3)}***${orderData.platform_registered_account_number.slice(-2)}`
+        id: row.order_platform_id,
+        name: row.platform_name || '[No Name]',
+        is_cash_payment: Boolean(row.is_cash_payment),
+        description: row.platform_description || null,
+        registered_account_name: row.platform_account_name || null,
+        registered_account_number: row.platform_account_number
+          ? `${row.platform_account_number.slice(0, 3)}***${row.platform_account_number.slice(-2)}`
           : null,
+      },
+
+      application: {
+        id: row.order_application_id,
+        name: row.application_name || '[No Name]',
+        category: row.application_category,
+        images: row.application_images || [],
+        description: row.application_description || null,
+        fee: parseFloat(row.application_fee) || 0,
+        rent: parseFloat(row.application_rent) || 0,
+        link: row.application_link || null,
+        level: row.application_level || 1,
       },
     };
 
     const responseTime = Date.now() - startTime;
-
     logger.info('Order fetch by ID successful', {
       orderId: cleanedOrderId.substring(0, 8),
       paymentStatus: sanitizedOrder.order_payment_status,
-      orderPrice: sanitizedOrder.order_price,
-      orderRent: sanitizedOrder.order_rent,
-      platformName: sanitizedOrder.payment.platform_name,
-      isCashPayment: sanitizedOrder.platform.is_cash_payment,
       durationMs: responseTime,
       requestId,
     });
@@ -281,22 +182,17 @@ async function getOrderFromDatabase(orderId) {
       durationMs: responseTime,
     });
 
-    if (client) await client.cleanup();
-
+    await client.cleanup();
     return sanitizedOrder;
   } catch (error) {
-    const responseTime = Date.now() - startTime;
-
     logger.error('Global Order By ID Error', {
       error: error.message,
-      durationMs: responseTime,
       requestId,
       orderId: orderId ? orderId.substring(0, 8) : 'unknown',
     });
 
     trackDatabaseError(error, 'order_by_id_global', {
       requestId,
-      orderId: orderId ? orderId.substring(0, 8) : 'unknown',
       critical: 'true',
     });
 
@@ -305,50 +201,29 @@ async function getOrderFromDatabase(orderId) {
   }
 }
 
-/**
- * Server Component principal pour la page d'édition d'une commande
- */
 export default async function EditOrderPage({ params }) {
   try {
     const { id } = await params;
 
-    // ===== VÉRIFICATION AUTHENTIFICATION =====
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
+    const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user) {
       trackAuth('unauthenticated_order_edit_access', {}, 'warning');
       redirect('/login');
     }
 
-    // ===== RÉCUPÉRATION DE LA COMMANDE =====
     const order = await getOrderFromDatabase(id);
+    if (!order) notFound();
 
-    // ===== VÉRIFICATION EXISTENCE =====
-    if (!order) {
-      notFound();
-    }
-
-    // ===== RENDU DE LA PAGE =====
     logger.info('Order edit page rendered', {
       orderId: order.order_id.substring(0, 8),
       paymentStatus: order.order_payment_status,
-      orderPrice: order.order_price,
-      orderRent: order.order_rent,
       userId: session.user.id,
     });
 
     return <EditOrder order={order} />;
   } catch (error) {
-    logger.error('Order edit page error', {
-      error: error.message,
-    });
-
-    trackDatabaseError(error, 'order_edit_page_render', {
-      critical: 'true',
-    });
-
+    logger.error('Order edit page error', { error: error.message });
+    trackDatabaseError(error, 'order_edit_page_render', { critical: 'true' });
     notFound();
   }
 }
