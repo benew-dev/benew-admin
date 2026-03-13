@@ -123,25 +123,63 @@
 .playerWrapper {
   width: 100%;
   background-color: #000;
-  /* Ratio 16:9 */
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
+  /*
+    PAS d'aspect-ratio ni overflow:hidden ici —
+    la barre de contrôles Video.js est en position absolute
+    EN DEHORS de la zone vidéo et serait coupée sinon.
+    On laisse le player gérer sa propre hauteur.
+  */
+  position: relative;
+  line-height: 0; /* Évite le gap parasite sous la vidéo */
 }
 
-/* Forcer le player à prendre toute la place */
+/* Le player prend toute la largeur et calcule sa hauteur en 16:9 */
 .playerWrapper :global(.cld-video-player) {
   width: 100% !important;
-  height: 100% !important;
+  height: auto !important;
 }
 
 .playerWrapper :global(.video-js) {
   width: 100% !important;
-  height: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 9;
+  /* Doit être visible pour que la control bar ne soit pas coupée */
+  overflow: visible !important;
+}
+
+/* La zone vidéo elle-même reste en 16:9 */
+.playerWrapper :global(.vjs-tech) {
+  position: relative !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 9;
+}
+
+/* Barre de contrôles — s'assurer qu'elle est visible et z-index correct */
+.playerWrapper :global(.vjs-control-bar) {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 10 !important;
+  width: 100% !important;
+  /* Position en bas de la zone vidéo, pas coupée */
+  position: relative !important;
+  bottom: auto !important;
+}
+
+/* S'assurer que les boutons individuels sont visibles */
+.playerWrapper :global(.vjs-button),
+.playerWrapper :global(.vjs-volume-panel),
+.playerWrapper :global(.vjs-progress-control),
+.playerWrapper :global(.vjs-time-control),
+.playerWrapper :global(.vjs-fullscreen-control) {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .player {
   width: 100%;
-  height: 100%;
 }
 
 /* === FOOTER === */
