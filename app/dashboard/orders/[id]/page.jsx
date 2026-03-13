@@ -137,9 +137,7 @@ async function getOrderFromDatabase(orderId) {
       payment: {
         platform_name: row.platform_name,
         platform_account_name: row.order_payment_name || null,
-        platform_account_number: row.order_payment_number
-          ? `${row.order_payment_number.slice(0, 3)}***${row.order_payment_number.slice(-2)}`
-          : null,
+        platform_account_number: row.order_payment_number,
         platform_id: row.order_platform_id,
       },
 
