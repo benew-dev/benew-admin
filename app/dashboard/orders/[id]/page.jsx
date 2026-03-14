@@ -148,9 +148,7 @@ async function getOrderFromDatabase(orderId) {
         is_cash_payment: Boolean(row.is_cash_payment),
         description: row.platform_description || null,
         registered_account_name: row.platform_account_name || null,
-        registered_account_number: row.platform_account_number
-          ? `${row.platform_account_number.slice(0, 3)}***${row.platform_account_number.slice(-2)}`
-          : null,
+        registered_account_number: row.platform_account_number,
       },
 
       application: {
