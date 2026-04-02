@@ -14,34 +14,11 @@ import styles from './videoFilters.module.css';
 const VideoFilters = ({ onFilterChange, currentFilters = {} }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
-    category: [],
-    level: [],
     status: [],
   });
+  const [categorySearch, setCategorySearch] = useState('');
 
   const filterRef = useRef(null);
-
-  // Options de filtres
-  const filterOptions = {
-    category: [
-      { value: 'tutorial', label: 'Tutorial' },
-      { value: 'overview', label: 'Overview' },
-      { value: 'demo', label: 'Demo' },
-      { value: 'setup', label: 'Setup' },
-      { value: 'tips', label: 'Tips' },
-    ],
-    level: [
-      { value: '1', label: 'Level 1' },
-      { value: '2', label: 'Level 2' },
-      { value: '3', label: 'Level 3' },
-      { value: '4', label: 'Level 4' },
-      { value: '5', label: 'Level 5' },
-    ],
-    status: [
-      { value: 'true', label: 'Active' },
-      { value: 'false', label: 'Inactive' },
-    ],
-  };
 
   // Initialiser les filtres depuis les filtres actuels
   useEffect(() => {
@@ -69,34 +46,17 @@ const VideoFilters = ({ onFilterChange, currentFilters = {} }) => {
   }, []);
 
   // Compter le nombre total de filtres actifs
-  const totalActiveFilters = Object.values(activeFilters).flat().length;
+  const totalActiveFilters =
+    activeFilters.status.length + (categorySearch.trim() ? 1 : 0);
 
   // Fonction pour notifier le changement de filtre
-  const notifyFilterChange = (filters) => {
+  const notifyFilterChange = (statusFilters, catSearch) => {
     if (onFilterChange) {
-      // Construire l'objet de filtres pour la Server Action
-      const serverFilters = {
-        ...currentFilters, // Conserver les autres filtres (comme video_title)
-      };
-
-      if (filters.category.length > 0) {
-        serverFilters.category = filters.category;
-      } else {
-        delete serverFilters.category;
-      }
-
-      if (filters.level.length > 0) {
-        serverFilters.level = filters.level;
-      } else {
-        delete serverFilters.level;
-      }
-
-      if (filters.status.length > 0) {
-        serverFilters.status = filters.status;
-      } else {
-        delete serverFilters.status;
-      }
-
+      const serverFilters = { ...currentFilters };
+      if (catSearch.trim()) serverFilters.category = catSearch.trim();
+      else delete serverFilters.category;
+      if (statusFilters.length > 0) serverFilters.status = statusFilters;
+      else delete serverFilters.status;
       onFilterChange(serverFilters);
     }
   };
@@ -123,14 +83,9 @@ const VideoFilters = ({ onFilterChange, currentFilters = {} }) => {
 
   // Réinitialiser tous les filtres
   const clearAllFilters = () => {
-    const emptyFilters = {
-      category: [],
-      level: [],
-      status: [],
-    };
-
-    setActiveFilters(emptyFilters);
-    notifyFilterChange(emptyFilters);
+    setActiveFilters({ status: [] });
+    setCategorySearch('');
+    notifyFilterChange([], '');
   };
 
   // Vérifier si un filtre est actif
@@ -181,59 +136,16 @@ const VideoFilters = ({ onFilterChange, currentFilters = {} }) => {
             {/* Filtre par Catégorie */}
             <div className={styles.filterSection}>
               <h4 className={styles.filterTitle}>Category</h4>
-              <div className={styles.filterOptions}>
-                {filterOptions.category.map((option) => (
-                  <button
-                    key={option.value}
-                    className={`${styles.filterOption} ${
-                      isFilterActive('category', option.value)
-                        ? styles.active
-                        : ''
-                    }`}
-                    onClick={() => handleFilterToggle('category', option.value)}
-                    type="button"
-                  >
-                    <div className={styles.checkbox}>
-                      {isFilterActive('category', option.value) ? (
-                        <MdCheckBox className={styles.checkedIcon} />
-                      ) : (
-                        <MdCheckBoxOutlineBlank
-                          className={styles.uncheckedIcon}
-                        />
-                      )}
-                    </div>
-                    <span className={styles.optionLabel}>{option.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Filtre par Level */}
-            <div className={styles.filterSection}>
-              <h4 className={styles.filterTitle}>Level</h4>
-              <div className={styles.filterOptions}>
-                {filterOptions.level.map((option) => (
-                  <button
-                    key={option.value}
-                    className={`${styles.filterOption} ${
-                      isFilterActive('level', option.value) ? styles.active : ''
-                    }`}
-                    onClick={() => handleFilterToggle('level', option.value)}
-                    type="button"
-                  >
-                    <div className={styles.checkbox}>
-                      {isFilterActive('level', option.value) ? (
-                        <MdCheckBox className={styles.checkedIcon} />
-                      ) : (
-                        <MdCheckBoxOutlineBlank
-                          className={styles.uncheckedIcon}
-                        />
-                      )}
-                    </div>
-                    <span className={styles.optionLabel}>{option.label}</span>
-                  </button>
-                ))}
-              </div>
+              <input
+                type="text"
+                placeholder="Search by category..."
+                value={categorySearch}
+                onChange={(e) => {
+                  setCategorySearch(e.target.value);
+                  notifyFilterChange(activeFilters.status, e.target.value);
+                }}
+                className={styles.categoryInput}
+              />
             </div>
 
             {/* Filtre par Status */}

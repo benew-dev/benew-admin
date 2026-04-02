@@ -26,23 +26,11 @@ async function getVideosFromDatabase() {
 
     const videosQuery = `
       SELECT
-        video_id,
-        video_title,
-        video_description,
-        video_cloudinary_id,
-        video_thumbnail_id,
-        video_category,
-        video_level,
-        video_tags,
-        video_duration_seconds,
-        views_count,
-        series_name,
-        series_order,
-        related_application_id,
-        related_template_id,
-        is_active,
-        created_at,
-        updated_at
+        video_id, video_title, video_description,
+        video_cloudinary_id, video_thumbnail_id,
+        video_category, video_tags,
+        video_duration_seconds, views_count,
+        is_active, created_at, updated_at
       FROM catalog.channel_videos
       ORDER BY created_at DESC
     `;
@@ -61,17 +49,12 @@ async function getVideosFromDatabase() {
       video_description: video.video_description || null,
       video_cloudinary_id: video.video_cloudinary_id,
       video_thumbnail_id: video.video_thumbnail_id || null,
-      video_category: video.video_category || 'tutorial',
-      video_level: video.video_level || 1,
+      video_category: video.video_category || null,
       video_tags: video.video_tags || [],
       video_duration_seconds: video.video_duration_seconds
         ? parseInt(video.video_duration_seconds)
         : null,
       views_count: parseInt(video.views_count) || 0,
-      series_name: video.series_name || null,
-      series_order: video.series_order ? parseInt(video.series_order) : null,
-      related_application_id: video.related_application_id || null,
-      related_template_id: video.related_template_id || null,
       is_active: Boolean(video.is_active),
       created_at: video.created_at,
       updated_at: video.updated_at,

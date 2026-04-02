@@ -14,32 +14,19 @@ import {
   trackValidation,
 } from '@/utils/monitoring';
 
-const VIDEO_CATEGORIES = [
-  { value: 'tutorial', label: 'Tutorial' },
-  { value: 'overview', label: 'Overview' },
-  { value: 'demo', label: 'Demo' },
-  { value: 'setup', label: 'Setup' },
-  { value: 'tips', label: 'Tips' },
-];
-
-export default function AddVideo({ applications = [], templates = [] }) {
+export default function AddVideo() {
   const router = useRouter();
 
   // Champs obligatoires
   const [title, setTitle] = useState('');
   const [cloudinaryId, setCloudinaryId] = useState('');
   const [category, setCategory] = useState('');
-  const [level, setLevel] = useState('');
 
   // Champs optionnels
   const [description, setDescription] = useState('');
   const [thumbnailId, setThumbnailId] = useState('');
   const [tags, setTags] = useState('');
   const [durationSeconds, setDurationSeconds] = useState('');
-  const [seriesName, setSeriesName] = useState('');
-  const [seriesOrder, setSeriesOrder] = useState('');
-  const [relatedApplicationId, setRelatedApplicationId] = useState('');
-  const [relatedTemplateId, setRelatedTemplateId] = useState('');
 
   // État du formulaire
   const [errorMessage, setErrorMessage] = useState('');
@@ -79,21 +66,6 @@ export default function AddVideo({ applications = [], templates = [] }) {
       return;
     }
 
-    if (!level || level < 1 || level > 5) {
-      setErrorMessage('Le niveau doit être entre 1 et 5');
-      setIsLoading(false);
-      return;
-    }
-
-    // Validation cohérence série
-    if ((seriesName && !seriesOrder) || (!seriesName && seriesOrder)) {
-      setErrorMessage(
-        "Le nom de série et le numéro d'ordre doivent être renseignés ensemble",
-      );
-      setIsLoading(false);
-      return;
-    }
-
     const parsedTags = parseTags(tags);
 
     const formData = {
@@ -101,14 +73,9 @@ export default function AddVideo({ applications = [], templates = [] }) {
       description: description.trim() || null,
       cloudinaryId,
       thumbnailId: thumbnailId || null,
-      category,
-      level: parseInt(level, 10),
+      category: category.trim() || null,
       tags: parsedTags,
       durationSeconds: durationSeconds ? parseInt(durationSeconds, 10) : null,
-      seriesName: seriesName.trim() || null,
-      seriesOrder: seriesOrder ? parseInt(seriesOrder, 10) : null,
-      relatedApplicationId: relatedApplicationId || null,
-      relatedTemplateId: relatedTemplateId || null,
     };
 
     try {
@@ -188,41 +155,16 @@ export default function AddVideo({ applications = [], templates = [] }) {
             {/* Catégorie */}
             <div className={styles.inputGroup}>
               <label htmlFor="category" className={styles.label}>
-                Catégorie *
+                Catégorie
               </label>
-              <select
+              <input
+                type="text"
                 id="category"
+                placeholder="Ex: tutoriel, présentation, démo..."
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className={styles.input}
-              >
-                <option value="">Sélectionnez une catégorie</option>
-                {VIDEO_CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Level */}
-            <div className={styles.inputGroup}>
-              <label htmlFor="level" className={styles.label}>
-                Niveau (1-5) *
-              </label>
-              <select
-                id="level"
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className={styles.input}
-              >
-                <option value="">Sélectionnez un niveau</option>
-                <option value="1">Niveau 1 - Débutant</option>
-                <option value="2">Niveau 2 - Intermédiaire</option>
-                <option value="3">Niveau 3 - Avancé</option>
-                <option value="4">Niveau 4 - Expert</option>
-                <option value="5">Niveau 5 - Master</option>
-              </select>
+              />
             </div>
 
             {/* Tags */}
@@ -395,89 +337,6 @@ export default function AddVideo({ applications = [], templates = [] }) {
               </div>
             )}
           </CldUploadWidget>
-        </div>
-
-        {/* === SÉRIE === */}
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Série / Playlist (optionnel)</h3>
-          <div className={styles.inputs}>
-            <div className={styles.inputGroup}>
-              <label htmlFor="seriesName" className={styles.label}>
-                Nom de la série
-              </label>
-              <input
-                type="text"
-                id="seriesName"
-                placeholder="Ex: Formation Next.js complète"
-                value={seriesName}
-                onChange={(e) => setSeriesName(e.target.value)}
-                className={styles.input}
-              />
-            </div>
-            <div className={styles.inputGroup}>
-              <label htmlFor="seriesOrder" className={styles.label}>
-                Numéro dans la série
-              </label>
-              <input
-                type="number"
-                id="seriesOrder"
-                min="1"
-                placeholder="Ex: 1"
-                value={seriesOrder}
-                onChange={(e) => setSeriesOrder(e.target.value)}
-                className={styles.input}
-                disabled={!seriesName}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* === LIAISONS === */}
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>
-            Liens avec le catalogue (optionnel)
-          </h3>
-          <div className={styles.inputs}>
-            {/* Application liée */}
-            <div className={styles.inputGroup}>
-              <label htmlFor="relatedApplicationId" className={styles.label}>
-                Application liée
-              </label>
-              <select
-                id="relatedApplicationId"
-                value={relatedApplicationId}
-                onChange={(e) => setRelatedApplicationId(e.target.value)}
-                className={styles.input}
-              >
-                <option value="">Aucune application liée</option>
-                {applications.map((app) => (
-                  <option key={app.application_id} value={app.application_id}>
-                    {app.application_name} ({app.application_category})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Template lié */}
-            <div className={styles.inputGroup}>
-              <label htmlFor="relatedTemplateId" className={styles.label}>
-                Template lié
-              </label>
-              <select
-                id="relatedTemplateId"
-                value={relatedTemplateId}
-                onChange={(e) => setRelatedTemplateId(e.target.value)}
-                className={styles.input}
-              >
-                <option value="">Aucun template lié</option>
-                {templates.map((t) => (
-                  <option key={t.template_id} value={t.template_id}>
-                    {t.template_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
         </div>
 
         {/* === SUBMIT === */}

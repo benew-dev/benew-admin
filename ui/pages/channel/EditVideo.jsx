@@ -16,14 +16,6 @@ import {
   trackNavigation,
 } from '@/utils/monitoring';
 
-const CATEGORIES = [
-  { value: 'tutorial', label: 'Tutorial' },
-  { value: 'overview', label: 'Overview' },
-  { value: 'demo', label: 'Demo' },
-  { value: 'setup', label: 'Setup' },
-  { value: 'tips', label: 'Tips' },
-];
-
 export default function EditVideo({ video }) {
   const router = useRouter();
 
@@ -31,18 +23,9 @@ export default function EditVideo({ video }) {
   const [title, setTitle] = useState(video.video_title);
   const [description, setDescription] = useState(video.video_description || '');
   const [category, setCategory] = useState(video.video_category);
-  const [level, setLevel] = useState(video.video_level || 1);
   const [tags, setTags] = useState(video.video_tags?.join(', ') || '');
   const [durationSeconds, setDurationSeconds] = useState(
     video.video_duration_seconds || '',
-  );
-  const [seriesName, setSeriesName] = useState(video.series_name || '');
-  const [seriesOrder, setSeriesOrder] = useState(video.series_order || '');
-  const [relatedApplicationId, setRelatedApplicationId] = useState(
-    video.related_application_id || '',
-  );
-  const [relatedTemplateId, setRelatedTemplateId] = useState(
-    video.related_template_id || '',
   );
   const [isActive, setIsActive] = useState(video.is_active);
 
@@ -95,14 +78,9 @@ export default function EditVideo({ video }) {
     const formData = {
       title,
       description: description || null,
-      category,
-      level: parseInt(level),
+      category: category || null,
       tags: parsedTags,
       durationSeconds: durationSeconds ? parseInt(durationSeconds) : null,
-      seriesName: seriesName || null,
-      seriesOrder: seriesOrder ? parseInt(seriesOrder) : null,
-      relatedApplicationId: relatedApplicationId || null,
-      relatedTemplateId: relatedTemplateId || null,
       isActive,
       cloudinaryId,
       thumbnailId,
@@ -116,14 +94,11 @@ export default function EditVideo({ video }) {
         {
           title,
           description: description || undefined,
-          category,
-          level: parseInt(level),
+          category: category || undefined,
           tags: parsedTags,
           durationSeconds: durationSeconds
             ? parseInt(durationSeconds)
             : undefined,
-          seriesName: seriesName || undefined,
-          seriesOrder: seriesOrder ? parseInt(seriesOrder) : undefined,
           isActive,
         },
         { abortEarly: false },
@@ -283,29 +258,6 @@ export default function EditVideo({ video }) {
             )}
           </div>
 
-          {/* Level */}
-          <div className={styles.inputGroup}>
-            <select
-              value={level}
-              onChange={(e) => setLevel(parseInt(e.target.value))}
-              className={`${styles.select} ${hasFieldError('level') ? styles.inputError : ''}`}
-              required
-            >
-              <option value="">Select Level *</option>
-              <option value={1}>1 - Beginner</option>
-              <option value={2}>2 - Elementary</option>
-              <option value={3}>3 - Intermediate</option>
-              <option value={4}>4 - Advanced</option>
-              <option value={5}>5 - Expert</option>
-            </select>
-            {hasFieldError('level') && (
-              <div className={styles.fieldError}>
-                <MdError className={styles.errorIcon} />
-                <span>{getFieldError('level')}</span>
-              </div>
-            )}
-          </div>
-
           {/* Tags */}
           <div className={styles.inputGroup}>
             <input
@@ -345,26 +297,18 @@ export default function EditVideo({ video }) {
         <div className={styles.controlsSection}>
           {/* Catégorie */}
           <div className={styles.categoryGroup}>
-            <h4>Category *</h4>
-            <div
+            <h4>Category</h4>
+            <input
+              type="text"
+              placeholder="Ex: tutoriel, présentation, démo..."
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
               className={
-                hasFieldError('category') ? styles.radioGroupError : ''
+                hasFieldError('category')
+                  ? styles.inputError
+                  : styles.categoryInput
               }
-            >
-              {CATEGORIES.map((cat) => (
-                <label key={cat.value} className={styles.radioLabel}>
-                  <input
-                    type="radio"
-                    name="category"
-                    value={cat.value}
-                    checked={category === cat.value}
-                    onChange={(e) => setCategory(e.target.value)}
-                    required
-                  />
-                  <span>{cat.label}</span>
-                </label>
-              ))}
-            </div>
+            />
             {hasFieldError('category') && (
               <div className={styles.fieldError}>
                 <MdError className={styles.errorIcon} />

@@ -25,15 +25,6 @@ function formatDuration(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// Helper pour le label de catégorie
-const CATEGORY_LABELS = {
-  tutorial: 'Tutorial',
-  overview: 'Overview',
-  demo: 'Demo',
-  setup: 'Setup',
-  tips: 'Tips',
-};
-
 export default function VideosList({ data }) {
   const router = useRouter();
   const [videos, setVideos] = useState(data);
@@ -258,21 +249,12 @@ export default function VideosList({ data }) {
                 </div>
 
                 <div className={styles.metaRow}>
-                  <span className={styles.categoryBadge}>
-                    {CATEGORY_LABELS[video.video_category] ||
-                      video.video_category}
-                  </span>
-                  <span className={styles.levelBadge}>
-                    Level {video.video_level}
-                  </span>
+                  {video.video_category && (
+                    <span className={styles.categoryBadge}>
+                      {video.video_category}
+                    </span>
+                  )}
                 </div>
-
-                {video.series_name && (
-                  <p className={styles.seriesInfo}>
-                    📚 {video.series_name}
-                    {video.series_order && ` — #${video.series_order}`}
-                  </p>
-                )}
 
                 <div className={styles.statsRow}>
                   <span>👁 {video.views_count} views</span>

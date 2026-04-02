@@ -21,14 +21,6 @@ function formatDuration(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-const CATEGORY_LABELS = {
-  tutorial: 'Tutorial',
-  overview: 'Overview',
-  demo: 'Demo',
-  setup: 'Setup',
-  tips: 'Tips',
-};
-
 export default function SingleVideo({ data }) {
   const router = useRouter();
   const [video, setVideo] = useState(data);
@@ -192,32 +184,17 @@ export default function SingleVideo({ data }) {
         <div className={styles.videoInfo}>
           {/* Badges catégorie + level */}
           <div className={styles.badgeRow}>
-            <span className={styles.categoryBadge}>
-              {CATEGORY_LABELS[video.video_category] || video.video_category}
-            </span>
-            <span className={styles.levelBadge}>Level {video.video_level}</span>
+            {video.video_category && (
+              <span className={styles.categoryBadge}>
+                {video.video_category}
+              </span>
+            )}
           </div>
 
           {video.video_description && (
             <div className={styles.descriptionBlock}>
               <strong>Description</strong>
               <p>{video.video_description}</p>
-            </div>
-          )}
-
-          {/* Série */}
-          {video.series_name && (
-            <div className={styles.seriesBlock}>
-              <strong>Series</strong>
-              <p>
-                📚 {video.series_name}
-                {video.series_order && (
-                  <span className={styles.seriesOrder}>
-                    {' '}
-                    — Episode #{video.series_order}
-                  </span>
-                )}
-              </p>
             </div>
           )}
 
@@ -252,35 +229,6 @@ export default function SingleVideo({ data }) {
               </span>
             </div>
           </div>
-
-          {/* Relations */}
-          {(video.related_application_id || video.related_template_id) && (
-            <div className={styles.relationsBlock}>
-              <strong>Related Content</strong>
-              {video.related_application_id && (
-                <p>
-                  📱{' '}
-                  <Link
-                    href={`/dashboard/applications/${video.related_application_id}`}
-                    className={styles.relationLink}
-                  >
-                    View related application
-                  </Link>
-                </p>
-              )}
-              {video.related_template_id && (
-                <p>
-                  🎨{' '}
-                  <Link
-                    href={`/dashboard/templates/${video.related_template_id}`}
-                    className={styles.relationLink}
-                  >
-                    View related template
-                  </Link>
-                </p>
-              )}
-            </div>
-          )}
 
           {/* Dates */}
           <div className={styles.dateBlock}>

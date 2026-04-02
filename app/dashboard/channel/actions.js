@@ -16,7 +16,7 @@ import {
  */
 function validateFilters(filters = {}) {
   const validated = {};
-  const allowedFields = ['video_title', 'category', 'level', 'status'];
+  const allowedFields = ['video_title', 'category', 'status'];
 
   for (const [key, value] of Object.entries(filters)) {
     if (!allowedFields.includes(key)) continue;
@@ -29,22 +29,9 @@ function validateFilters(filters = {}) {
         break;
 
       case 'category':
-        if (Array.isArray(value)) {
-          const allowedCategories = [
-            'tutorial',
-            'overview',
-            'demo',
-            'setup',
-            'tips',
-          ];
-          validated[key] = value.filter((v) => allowedCategories.includes(v));
-        }
-        break;
-
-      case 'level':
-        if (Array.isArray(value)) {
-          const allowedLevels = ['1', '2', '3', '4', '5'];
-          validated[key] = value.filter((v) => allowedLevels.includes(v));
+        // Texte libre — on sanitize juste la longueur et le type
+        if (typeof value === 'string' && value.trim().length >= 1) {
+          validated[key] = value.trim().substring(0, 100);
         }
         break;
 
@@ -74,18 +61,10 @@ function buildWhereClause(filters) {
     paramCount++;
   }
 
-  if (filters.category?.length > 0) {
-    const placeholders = filters.category
-      .map(() => `$${paramCount++}`)
-      .join(', ');
-    conditions.push(`video_category IN (${placeholders})`);
-    values.push(...filters.category);
-  }
-
-  if (filters.level?.length > 0) {
-    const placeholders = filters.level.map(() => `$${paramCount++}`).join(', ');
-    conditions.push(`video_level IN (${placeholders})`);
-    values.push(...filters.level.map((l) => parseInt(l)));
+  if (filters.category) {
+    conditions.push(`video_category ILIKE $${paramCount}`);
+    values.push(`%${filters.category}%`);
+    paramCount++;
   }
 
   if (filters.status?.length > 0) {
@@ -156,14 +135,9 @@ export async function getFilteredVideos(filters = {}) {
         video_cloudinary_id,
         video_thumbnail_id,
         video_category,
-        video_level,
         video_tags,
         video_duration_seconds,
         views_count,
-        series_name,
-        series_order,
-        related_application_id,
-        related_template_id,
         is_active,
         created_at,
         updated_at
@@ -186,17 +160,12 @@ export async function getFilteredVideos(filters = {}) {
       video_description: video.video_description || null,
       video_cloudinary_id: video.video_cloudinary_id,
       video_thumbnail_id: video.video_thumbnail_id || null,
-      video_category: video.video_category || 'tutorial',
-      video_level: video.video_level || 1,
+      video_category: video.video_category || null,
       video_tags: video.video_tags || [],
       video_duration_seconds: video.video_duration_seconds
         ? parseInt(video.video_duration_seconds)
         : null,
       views_count: parseInt(video.views_count) || 0,
-      series_name: video.series_name || null,
-      series_order: video.series_order ? parseInt(video.series_order) : null,
-      related_application_id: video.related_application_id || null,
-      related_template_id: video.related_template_id || null,
       is_active: Boolean(video.is_active),
       created_at: video.created_at,
       updated_at: video.updated_at,

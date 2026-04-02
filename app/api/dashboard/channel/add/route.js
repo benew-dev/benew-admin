@@ -96,13 +96,8 @@ export async function POST(request) {
       cloudinaryId,
       thumbnailId,
       category,
-      level,
       tags,
       durationSeconds,
-      seriesName,
-      seriesOrder,
-      relatedApplicationId,
-      relatedTemplateId,
     } = body;
 
     // Sanitization
@@ -112,13 +107,8 @@ export async function POST(request) {
       cloudinaryId,
       thumbnailId,
       category,
-      level,
       tags,
       durationSeconds,
-      seriesName,
-      seriesOrder,
-      relatedApplicationId,
-      relatedTemplateId,
     });
 
     const {
@@ -127,13 +117,8 @@ export async function POST(request) {
       cloudinaryId: sanitizedCloudinaryId,
       thumbnailId: sanitizedThumbnailId,
       category: sanitizedCategory,
-      level: sanitizedLevel,
       tags: sanitizedTags,
       durationSeconds: sanitizedDurationSeconds,
-      seriesName: sanitizedSeriesName,
-      seriesOrder: sanitizedSeriesOrder,
-      relatedApplicationId: sanitizedRelatedApplicationId,
-      relatedTemplateId: sanitizedRelatedTemplateId,
     } = sanitizedInputs;
 
     // Validation Yup
@@ -145,13 +130,8 @@ export async function POST(request) {
           cloudinaryId: sanitizedCloudinaryId,
           thumbnailId: sanitizedThumbnailId,
           category: sanitizedCategory,
-          level: sanitizedLevel,
           tags: sanitizedTags,
           durationSeconds: sanitizedDurationSeconds,
-          seriesName: sanitizedSeriesName,
-          seriesOrder: sanitizedSeriesOrder,
-          relatedApplicationId: sanitizedRelatedApplicationId,
-          relatedTemplateId: sanitizedRelatedTemplateId,
         },
         { abortEarly: false },
       );
@@ -179,12 +159,7 @@ export async function POST(request) {
     }
 
     // Validation champs requis
-    if (
-      !sanitizedTitle ||
-      !sanitizedCloudinaryId ||
-      !sanitizedCategory ||
-      !sanitizedLevel
-    ) {
+    if (!sanitizedTitle || !sanitizedCloudinaryId) {
       const responseTime = Date.now() - startTime;
       const header = createResponseHeaders(requestId, responseTime);
 
@@ -193,26 +168,6 @@ export async function POST(request) {
 
       return NextResponse.json(
         { message: 'All required fields must be provided' },
-        { status: 400, header },
-      );
-    }
-
-    // Validation cohérence series
-    if (
-      (sanitizedSeriesName && !sanitizedSeriesOrder) ||
-      (!sanitizedSeriesName && sanitizedSeriesOrder)
-    ) {
-      const responseTime = Date.now() - startTime;
-      const header = createResponseHeaders(requestId, responseTime);
-
-      logger.warn('Series consistency error', { requestId });
-      trackValidation('series_consistency_error', {}, 'warning');
-
-      return NextResponse.json(
-        {
-          message:
-            'series_name and series_order must both be provided or both be empty',
-        },
         { status: 400, header },
       );
     }
@@ -246,14 +201,9 @@ export async function POST(request) {
           video_cloudinary_id,
           video_thumbnail_id,
           video_category,
-          video_level,
           video_tags,
-          video_duration_seconds,
-          series_name,
-          series_order,
-          related_application_id,
-          related_template_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          video_duration_seconds
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING video_id
       `;
 
@@ -262,14 +212,9 @@ export async function POST(request) {
         sanitizedDescription || null,
         sanitizedCloudinaryId,
         sanitizedThumbnailId || null,
-        sanitizedCategory,
-        sanitizedLevel,
+        sanitizedCategory || null,
         sanitizedTags || [],
         sanitizedDurationSeconds || null,
-        sanitizedSeriesName || null,
-        sanitizedSeriesOrder || null,
-        sanitizedRelatedApplicationId || null,
-        sanitizedRelatedTemplateId || null,
       ];
 
       result = await client.query(queryText, values);
@@ -297,7 +242,6 @@ export async function POST(request) {
     logger.info('Video added successfully', {
       videoId: newVideoId,
       title: sanitizedTitle,
-      category: sanitizedCategory,
       durationMs: responseTime,
       userId: session.user.id,
       requestId,
@@ -306,7 +250,6 @@ export async function POST(request) {
     trackDatabase('video_added_successfully', {
       videoId: newVideoId,
       title: sanitizedTitle,
-      category: sanitizedCategory,
       userId: session.user.id,
     });
 
@@ -322,8 +265,6 @@ export async function POST(request) {
         data: {
           video_id: newVideoId,
           video_title: sanitizedTitle,
-          video_category: sanitizedCategory,
-          video_level: sanitizedLevel,
           video_cloudinary_id: sanitizedCloudinaryId,
         },
         meta: {

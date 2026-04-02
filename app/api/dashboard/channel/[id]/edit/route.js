@@ -170,18 +170,11 @@ export async function PUT(request, { params }) {
       title,
       description,
       category,
-      level,
       tags,
       durationSeconds,
-      seriesName,
-      seriesOrder,
-      relatedApplicationId,
-      relatedTemplateId,
       isActive,
-      // IDs Cloudinary (nouveaux uploadés)
       cloudinaryId,
       thumbnailId,
-      // Anciens IDs pour supprimer de Cloudinary si remplacés
       oldCloudinaryId,
       oldThumbnailId,
     } = body;
@@ -191,18 +184,13 @@ export async function PUT(request, { params }) {
     if (title !== undefined) dataToSanitize.title = title;
     if (description !== undefined) dataToSanitize.description = description;
     if (category !== undefined) dataToSanitize.category = category;
-    if (seriesName !== undefined) dataToSanitize.seriesName = seriesName;
 
     const sanitizedInputs = sanitizeVideoInputsStrict(dataToSanitize);
 
     const finalData = {
       ...sanitizedInputs,
-      level,
       tags,
       durationSeconds,
-      seriesOrder,
-      relatedApplicationId,
-      relatedTemplateId,
       isActive,
       cloudinaryId,
       thumbnailId,
@@ -215,13 +203,9 @@ export async function PUT(request, { params }) {
           title: finalData.title,
           description: finalData.description,
           category: finalData.category,
-          level: finalData.level,
           tags: finalData.tags,
           durationSeconds: finalData.durationSeconds,
-          seriesName: finalData.seriesName,
-          seriesOrder: finalData.seriesOrder,
           isActive: finalData.isActive,
-          // eslint-disable-next-line no-unused-vars
         }).filter(([_, value]) => value !== undefined),
       );
 
@@ -328,10 +312,6 @@ export async function PUT(request, { params }) {
         updateFields.push(`video_category = $${p++}`);
         updateValues.push(finalData.category);
       }
-      if (finalData.level !== undefined) {
-        updateFields.push(`video_level = $${p++}`);
-        updateValues.push(parseInt(finalData.level));
-      }
       if (finalData.tags !== undefined) {
         updateFields.push(`video_tags = $${p++}`);
         updateValues.push(finalData.tags || []);
@@ -343,24 +323,6 @@ export async function PUT(request, { params }) {
             ? parseInt(finalData.durationSeconds)
             : null,
         );
-      }
-      if (finalData.seriesName !== undefined) {
-        updateFields.push(`series_name = $${p++}`);
-        updateValues.push(finalData.seriesName || null);
-      }
-      if (finalData.seriesOrder !== undefined) {
-        updateFields.push(`series_order = $${p++}`);
-        updateValues.push(
-          finalData.seriesOrder ? parseInt(finalData.seriesOrder) : null,
-        );
-      }
-      if (relatedApplicationId !== undefined) {
-        updateFields.push(`related_application_id = $${p++}`);
-        updateValues.push(relatedApplicationId || null);
-      }
-      if (relatedTemplateId !== undefined) {
-        updateFields.push(`related_template_id = $${p++}`);
-        updateValues.push(relatedTemplateId || null);
       }
       if (finalData.isActive !== undefined) {
         updateFields.push(`is_active = $${p++}`);
@@ -442,19 +404,12 @@ export async function PUT(request, { params }) {
       video_description: updatedVideo.video_description || null,
       video_cloudinary_id: updatedVideo.video_cloudinary_id,
       video_thumbnail_id: updatedVideo.video_thumbnail_id || null,
-      video_category: updatedVideo.video_category || 'tutorial',
-      video_level: parseInt(updatedVideo.video_level) || 1,
+      video_category: updatedVideo.video_category || null,
       video_tags: updatedVideo.video_tags || [],
       video_duration_seconds: updatedVideo.video_duration_seconds
         ? parseInt(updatedVideo.video_duration_seconds)
         : null,
       views_count: parseInt(updatedVideo.views_count) || 0,
-      series_name: updatedVideo.series_name || null,
-      series_order: updatedVideo.series_order
-        ? parseInt(updatedVideo.series_order)
-        : null,
-      related_application_id: updatedVideo.related_application_id || null,
-      related_template_id: updatedVideo.related_template_id || null,
       is_active: Boolean(updatedVideo.is_active),
       created_at: updatedVideo.created_at,
       updated_at: updatedVideo.updated_at,

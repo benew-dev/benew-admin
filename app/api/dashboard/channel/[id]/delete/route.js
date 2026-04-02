@@ -235,21 +235,6 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // ===== 7. SUPPRESSION VIDEO_VIEWS (table dépendante) =====
-    try {
-      await client.query(
-        `DELETE FROM catalog.video_views WHERE video_id = $1`,
-        [cleanedVideoId],
-      );
-    } catch (viewsError) {
-      // Non-bloquant : on log mais on continue
-      logger.warn('Failed to delete video_views for video', {
-        requestId,
-        videoId: cleanedVideoId,
-        error: viewsError.message,
-      });
-    }
-
     // ===== 8. SUPPRESSION EN BASE =====
     let deleteResult;
     try {
