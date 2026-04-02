@@ -1,0 +1,165 @@
+/* ui/components/dashboard/CategoryAutocomplete/categoryAutocomplete.module.css */
+
+.container {
+  position: relative;
+  width: 100%;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 0.9rem 1.2rem;
+  padding-right: 6rem; /* espace pour le badge */
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--textSoft);
+  opacity: 0.8;
+}
+
+.input:focus {
+  border-color: #5d57c9;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.inputExisting {
+  border-color: rgba(34, 197, 94, 0.5) !important;
+}
+
+.inputExisting:focus {
+  border-color: #22c55e !important;
+  background-color: rgba(34, 197, 94, 0.05) !important;
+}
+
+.inputNew {
+  border-color: rgba(251, 146, 60, 0.5) !important;
+}
+
+.inputNew:focus {
+  border-color: #fb923c !important;
+  background-color: rgba(251, 146, 60, 0.05) !important;
+}
+
+.inputError {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+}
+
+/* Badge existing / new */
+.badge {
+  position: absolute;
+  right: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.badgeExisting {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badgeNew {
+  background-color: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+/* Dropdown */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  list-style: none;
+  padding: 0.4rem;
+  margin: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  animation: slideDown 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  gap: 0.5rem;
+}
+
+.suggestion:hover,
+.highlighted {
+  background-color: rgba(93, 87, 201, 0.15);
+}
+
+.suggestionText {
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.suggestionBadge {
+  font-size: 0.7rem;
+  color: var(--textSoft);
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.15rem 0.5rem;
+  border-radius: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Scrollbar discrète */
+.dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+.dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown {
+    animation: none;
+  }
+}

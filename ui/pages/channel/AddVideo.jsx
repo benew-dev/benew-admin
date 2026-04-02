@@ -14,7 +14,9 @@ import {
   trackValidation,
 } from '@/utils/monitoring';
 
-export default function AddVideo() {
+import CategoryAutocomplete from '@/ui/components/dashboard/categoryAutocomplete';
+
+export default function AddVideo({ existingCategories = [] }) {
   const router = useRouter();
 
   // Champs obligatoires
@@ -157,13 +159,12 @@ export default function AddVideo() {
               <label htmlFor="category" className={styles.label}>
                 Catégorie
               </label>
-              <input
-                type="text"
+              <CategoryAutocomplete
                 id="category"
-                placeholder="Ex: tutoriel, présentation, démo..."
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={styles.input}
+                onChange={setCategory}
+                existingCategories={existingCategories}
+                placeholder="Ex: tutoriel, présentation, démo..."
               />
             </div>
 

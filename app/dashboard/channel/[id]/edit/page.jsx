@@ -3,7 +3,7 @@ import EditVideo from '@/ui/pages/channel/EditVideo';
 import { redirect, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getClient } from '@/backend/dbConnect';
+import { getClient, query } from '@/backend/dbConnect';
 import logger from '@/utils/logger';
 import {
   trackAuth,
@@ -171,6 +171,26 @@ async function getVideoForEditFromDatabase(videoId) {
   }
 }
 
+// Ajouter cette fonction (après getVideoForEditFromDatabase)
+async function getExistingCategories() {
+  try {
+    const result = await query(`
+      SELECT DISTINCT video_category
+      FROM catalog.channel_videos
+      WHERE video_category IS NOT NULL
+        AND video_category != ''
+      ORDER BY video_category ASC
+    `);
+
+    return result.rows.map((row) => row.video_category).filter(Boolean);
+  } catch (error) {
+    logger.error('Error fetching existing categories for edit', {
+      error: error.message,
+    });
+    return [];
+  }
+}
+
 /**
  * Server Component - Page Edit Video
  */
@@ -188,7 +208,11 @@ export default async function EditVideoPage({ params }) {
       redirect('/login');
     }
 
-    const video = await getVideoForEditFromDatabase(id);
+    // Récupérer la vidéo et les catégories existantes en parallèle
+    const [video, existingCategories] = await Promise.all([
+      getVideoForEditFromDatabase(id),
+      getExistingCategories(),
+    ]);
 
     if (!video) {
       logger.info('Video not found for edit, triggering notFound()', {
@@ -202,9 +226,10 @@ export default async function EditVideoPage({ params }) {
       videoId: video.video_id,
       videoTitle: video.video_title,
       userId: session.user.id,
+      existingCategoriesCount: existingCategories.length,
     });
 
-    return <EditVideo video={video} />;
+    return <EditVideo video={video} existingCategories={existingCategories} />;
   } catch (error) {
     if (
       error.message?.includes('NEXT_REDIRECT') ||

@@ -16,7 +16,9 @@ import {
   trackNavigation,
 } from '@/utils/monitoring';
 
-export default function EditVideo({ video }) {
+import CategoryAutocomplete from '@/ui/components/dashboard/categoryAutocomplete';
+
+export default function EditVideo({ video, existingCategories = [] }) {
   const router = useRouter();
 
   // Champs éditables
@@ -298,16 +300,13 @@ export default function EditVideo({ video }) {
           {/* Catégorie */}
           <div className={styles.categoryGroup}>
             <h4>Category</h4>
-            <input
-              type="text"
-              placeholder="Ex: tutoriel, présentation, démo..."
+            <CategoryAutocomplete
+              id="category"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={
-                hasFieldError('category')
-                  ? styles.inputError
-                  : styles.categoryInput
-              }
+              onChange={setCategory}
+              existingCategories={existingCategories}
+              placeholder="Ex: tutoriel, présentation, démo..."
+              hasError={hasFieldError('category')}
             />
             {hasFieldError('category') && (
               <div className={styles.fieldError}>
