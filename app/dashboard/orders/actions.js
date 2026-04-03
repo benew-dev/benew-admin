@@ -8,7 +8,11 @@ import { trackDatabase, trackDatabaseError } from '@/utils/monitoring';
 
 function validateAndSanitizeFilters(filters = {}) {
   const validatedFilters = {};
-  const allowedFields = ['order_client', 'order_payment_status'];
+  const allowedFields = [
+    'order_client_name',
+    'order_client_email',
+    'order_payment_status',
+  ];
   const maxStringLength = 100;
   const maxArrayLength = 10;
 
@@ -16,7 +20,8 @@ function validateAndSanitizeFilters(filters = {}) {
     if (!allowedFields.includes(key)) continue;
 
     switch (key) {
-      case 'order_client':
+      case 'order_client_name':
+      case 'order_client_email':
         if (typeof value === 'string' && value.trim()) {
           const cleanValue = value.trim().substring(0, maxStringLength);
           const sanitizedValue = cleanValue.replace(/[<>"'%;()&+]/g, '');
@@ -47,11 +52,15 @@ function buildSecureWhereClause(filters) {
   const values = [];
   let paramCount = 1;
 
-  if (filters.order_client) {
-    conditions.push(
-      `array_to_string(o.order_client, ' ') ILIKE $${paramCount}`,
-    );
-    values.push(`%${filters.order_client}%`);
+  if (filters.order_client_name) {
+    conditions.push(`o.order_client_name ILIKE $${paramCount}`);
+    values.push(`%${filters.order_client_name}%`);
+    paramCount++;
+  }
+
+  if (filters.order_client_email) {
+    conditions.push(`o.order_client_email ILIKE $${paramCount}`);
+    values.push(`%${filters.order_client_email}%`);
     paramCount++;
   }
 
@@ -214,7 +223,9 @@ export async function getFilteredOrders(filters = {}) {
     const mainQuery = `
       SELECT
         o.order_id,
-        o.order_client,
+        o.order_client_name,
+        o.order_client_email,
+        o.order_client_phone,
         o.order_payment_status,
         o.order_created,
         o.order_updated,
@@ -271,9 +282,9 @@ export async function getFilteredOrders(filters = {}) {
       order_created: order.order_created,
       order_updated: order.order_updated,
       order_application_id: order.order_application_id,
-      order_client: Array.isArray(order.order_client)
-        ? order.order_client.slice(0, 4)
-        : [],
+      order_client_name: order.order_client_name || '',
+      order_client_email: order.order_client_email || '',
+      order_client_phone: order.order_client_phone || '',
       order_price: Math.max(0, parseFloat(order.order_price) || 0),
       order_rent: Math.max(0, parseFloat(order.order_rent) || 0),
 

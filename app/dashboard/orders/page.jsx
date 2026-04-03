@@ -29,7 +29,9 @@ async function getOrdersFromDatabase() {
     const mainQuery = `
       SELECT
         o.order_id,
-        o.order_client,
+        o.order_client_name,
+        o.order_client_email,
+        o.order_client_phone,
         o.order_payment_status,
         o.order_created,
         o.order_price,
@@ -75,9 +77,9 @@ async function getOrdersFromDatabase() {
       order_payment_status: order.order_payment_status,
       order_created: order.order_created,
       order_application_id: order.order_application_id,
-      order_client: Array.isArray(order.order_client)
-        ? order.order_client.slice(0, 4)
-        : [],
+      order_client_name: order.order_client_name || '',
+      order_client_email: order.order_client_email || '',
+      order_client_phone: order.order_client_phone || '',
       order_price: parseFloat(order.order_price) || 0,
       order_rent: parseFloat(order.order_rent) || 0,
       platform_name: order.platform_name || '[Unknown Platform]',

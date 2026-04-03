@@ -46,7 +46,9 @@ async function getOrderFromDatabase(orderId) {
       SELECT
         -- Commande
         o.order_id,
-        o.order_client,
+        o.order_client_name,
+        o.order_client_email,
+        o.order_client_phone,
         o.order_platform_id,
         o.order_application_id,
         o.order_payment_name,
@@ -98,27 +100,11 @@ async function getOrderFromDatabase(orderId) {
     // → index [0] = nom_complet, [1] = email, [2] = telephone
     // L'ancien code déstructurait en [lastName, firstName, email, phone]
     // ce qui était faux et collait email+téléphone dans le nom affiché
-    let clientInfo = {
-      fullName: 'N/A',
-      email: 'N/A',
-      phone: 'N/A',
+    const clientInfo = {
+      fullName: row.order_client_name || 'N/A',
+      email: row.order_client_email || 'N/A',
+      phone: row.order_client_phone || 'N/A',
     };
-
-    try {
-      if (Array.isArray(row.order_client) && row.order_client.length >= 2) {
-        const [fullName, email, phone = ''] = row.order_client;
-        clientInfo = {
-          fullName: fullName || 'N/A',
-          email: email || 'N/A',
-          phone: phone || 'N/A',
-        };
-      }
-    } catch (e) {
-      logger.warn('Failed to parse order_client', {
-        requestId,
-        error: e.message,
-      });
-    }
 
     const sanitizedOrder = {
       order_id: row.order_id,

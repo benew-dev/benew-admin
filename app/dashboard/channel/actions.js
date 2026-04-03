@@ -137,7 +137,6 @@ export async function getFilteredVideos(filters = {}) {
         video_category,
         video_tags,
         video_duration_seconds,
-        views_count,
         is_active,
         created_at,
         updated_at
@@ -165,7 +164,6 @@ export async function getFilteredVideos(filters = {}) {
       video_duration_seconds: video.video_duration_seconds
         ? parseInt(video.video_duration_seconds)
         : null,
-      views_count: parseInt(video.views_count) || 0,
       is_active: Boolean(video.is_active),
       created_at: video.created_at,
       updated_at: video.updated_at,

@@ -409,7 +409,6 @@ export async function PUT(request, { params }) {
       video_duration_seconds: updatedVideo.video_duration_seconds
         ? parseInt(updatedVideo.video_duration_seconds)
         : null,
-      views_count: parseInt(updatedVideo.views_count) || 0,
       is_active: Boolean(updatedVideo.is_active),
       created_at: updatedVideo.created_at,
       updated_at: updatedVideo.updated_at,

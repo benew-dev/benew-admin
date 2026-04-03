@@ -10,7 +10,7 @@ function OrderSearch({ placeholder, onFilterChange, currentFilters = {} }) {
 
   // Initialiser le terme de recherche depuis les filtres actuels
   useEffect(() => {
-    const clientName = currentFilters.order_client || '';
+    const clientName = currentFilters.order_client_name || '';
     setSearchTerm(clientName);
   }, [currentFilters.order_client]);
 
@@ -24,7 +24,7 @@ function OrderSearch({ placeholder, onFilterChange, currentFilters = {} }) {
     if (onFilterChange) {
       const newFilters = {
         ...currentFilters,
-        order_client: term.trim() || undefined,
+        order_client_name: term.trim() || undefined,
       };
 
       // Nettoyer les valeurs undefined

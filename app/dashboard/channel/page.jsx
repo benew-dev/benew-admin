@@ -29,7 +29,7 @@ async function getVideosFromDatabase() {
         video_id, video_title, video_description,
         video_cloudinary_id, video_thumbnail_id,
         video_category, video_tags,
-        video_duration_seconds, views_count,
+        video_duration_seconds,
         is_active, created_at, updated_at
       FROM catalog.channel_videos
       ORDER BY created_at DESC
@@ -54,7 +54,6 @@ async function getVideosFromDatabase() {
       video_duration_seconds: video.video_duration_seconds
         ? parseInt(video.video_duration_seconds)
         : null,
-      views_count: parseInt(video.views_count) || 0,
       is_active: Boolean(video.is_active),
       created_at: video.created_at,
       updated_at: video.updated_at,

@@ -215,12 +215,6 @@ export default function SingleVideo({ data }) {
           {/* Stats */}
           <div className={styles.statsBlock}>
             <div className={styles.statItem}>
-              <strong>Views</strong>
-              <span className={styles.viewsCount}>
-                👁 {video.views_count} views
-              </span>
-            </div>
-            <div className={styles.statItem}>
               <strong>Status</strong>
               <span
                 className={`${styles.statusBadge} ${video.is_active ? styles.activeBadge : styles.inactiveBadge}`}

@@ -197,12 +197,6 @@ export default function EditVideo({ video, existingCategories = [] }) {
         </h3>
         <div className={styles.readOnlyGrid}>
           <div className={styles.readOnlyItem}>
-            <strong>Views Count:</strong>
-            <span className={styles.viewsCount}>
-              👁 {video.views_count} views
-            </span>
-          </div>
-          <div className={styles.readOnlyItem}>
             <strong>Created:</strong>
             <span className={styles.dateValue}>
               {formatDate(video.created_at)}

@@ -256,10 +256,6 @@ export default function VideosList({ data }) {
                   )}
                 </div>
 
-                <div className={styles.statsRow}>
-                  <span>👁 {video.views_count} views</span>
-                </div>
-
                 {video.video_tags?.length > 0 && (
                   <div className={styles.tagsRow}>
                     {video.video_tags.slice(0, 3).map((tag, i) => (
