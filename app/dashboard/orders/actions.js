@@ -232,21 +232,14 @@ export async function getFilteredOrders(filters = {}) {
         o.order_application_id,
         o.order_price,
         o.order_rent,
-        o.order_payment_name,
-        o.order_payment_number,
+        o.order_platform_ids,
 
-        -- Plateforme
-        p.platform_name,
-        p.is_cash_payment,
-
-        -- Application
         a.application_name,
         a.application_category,
         a.application_images
 
       FROM admin.orders o
       JOIN catalog.applications a ON o.order_application_id = a.application_id
-      JOIN admin.platforms p       ON o.order_platform_id   = p.platform_id
       ${whereClause}
       ORDER BY o.order_created DESC
       LIMIT 1000
@@ -256,7 +249,6 @@ export async function getFilteredOrders(filters = {}) {
       SELECT COUNT(*) as total
       FROM admin.orders o
       JOIN catalog.applications a ON o.order_application_id = a.application_id
-      JOIN admin.platforms p       ON o.order_platform_id   = p.platform_id
       ${whereClause}
     `;
 
@@ -287,14 +279,9 @@ export async function getFilteredOrders(filters = {}) {
       order_client_phone: order.order_client_phone || '',
       order_price: Math.max(0, parseFloat(order.order_price) || 0),
       order_rent: Math.max(0, parseFloat(order.order_rent) || 0),
-
-      // Plateforme — depuis admin.platforms
-      platform_name: order.platform_name || '[Unknown Platform]',
-      platform_account_name: order.order_payment_name || null,
-      platform_account_number: order.order_payment_number
-        ? `${order.order_payment_number.slice(0, 3)}***${order.order_payment_number.slice(-2)}`
-        : null,
-      is_cash_payment: Boolean(order.is_cash_payment),
+      order_platform_ids: Array.isArray(order.order_platform_ids)
+        ? order.order_platform_ids
+        : [],
 
       // Application
       application_name: (order.application_name || '[No Name]').substring(

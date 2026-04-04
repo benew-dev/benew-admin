@@ -367,103 +367,67 @@ const EditOrder = ({ order }) => {
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <MdPayment className={styles.sectionIcon} />
-            <h2>Informations de paiement</h2>
+            <h2>Méthodes de paiement</h2>
           </div>
 
           <div className={styles.paymentCard}>
-            {/* Paiement effectué par le client */}
-            <div className={styles.paymentSubsection}>
-              <h4 className={styles.subsectionTitle}>
-                <MdCreditCard className={styles.subsectionIcon} />
-                Paiement effectué
-              </h4>
-
-              {/* ✅ CORRIGÉ : cashBadge sorti du fieldValue
-                  Avant : badge imbriqué dans <span fieldValue> → collé au texte,
-                  écrasé par text-align:right et word-break.
-                  Après : ligne dédiée au type de paiement avec badge séparé. */}
+            {order.hasCashPayment && (
               <div className={styles.paymentField}>
-                <span className={styles.fieldLabel}>Plateforme :</span>
+                <span className={styles.fieldLabel}>Type :</span>
+                <span className={styles.cashBadge}>💵 Inclut du CASH</span>
+              </div>
+            )}
+
+            {order.platforms.map((platform) => (
+              <div key={platform.id} className={styles.paymentSubsection}>
+                <h4 className={styles.subsectionTitle}>
+                  {platform.is_cash_payment ? (
+                    <MdAttachMoney className={styles.subsectionIcon} />
+                  ) : (
+                    <MdCreditCard className={styles.subsectionIcon} />
+                  )}
+                  {platform.name}
+                  {platform.is_cash_payment && (
+                    <span className={styles.cashBadge}>💵 CASH</span>
+                  )}
+                </h4>
+
+                {platform.description && (
+                  <div className={styles.paymentField}>
+                    <span className={styles.fieldLabel}>Description :</span>
+                    <span className={styles.fieldValue}>
+                      {platform.description}
+                    </span>
+                  </div>
+                )}
+
+                {!platform.is_cash_payment && platform.account_name && (
+                  <div className={styles.paymentField}>
+                    <span className={styles.fieldLabel}>Compte :</span>
+                    <span className={styles.fieldValue}>
+                      {platform.account_name}
+                    </span>
+                  </div>
+                )}
+
+                {!platform.is_cash_payment && platform.account_number && (
+                  <div className={styles.paymentField}>
+                    <span className={styles.fieldLabel}>Numéro :</span>
+                    <span className={styles.fieldValue}>
+                      {platform.account_number}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {order.platforms.length === 0 && (
+              <div className={styles.paymentField}>
                 <span className={styles.fieldValue}>
-                  {order.payment.platform_name}
+                  Aucune plateforme enregistrée
                 </span>
               </div>
-
-              {order.platform.is_cash_payment ? (
-                <div className={styles.paymentField}>
-                  <span className={styles.fieldLabel}>Type :</span>
-                  <span className={styles.cashBadge}>💵 CASH</span>
-                </div>
-              ) : (
-                <>
-                  {order.payment.platform_account_name && (
-                    <div className={styles.paymentField}>
-                      <span className={styles.fieldLabel}>Nom du compte :</span>
-                      <span className={styles.fieldValue}>
-                        {order.payment.platform_account_name}
-                      </span>
-                    </div>
-                  )}
-                  {order.payment.platform_account_number && (
-                    <div className={styles.paymentField}>
-                      <span className={styles.fieldLabel}>
-                        Numéro du compte :
-                      </span>
-                      <span className={styles.fieldValue}>
-                        {order.payment.platform_account_number}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Plateforme enregistrée dans admin.platforms */}
-            <div className={styles.paymentSubsection}>
-              <h4 className={styles.subsectionTitle}>
-                <MdAttachMoney className={styles.subsectionIcon} />
-                Plateforme enregistrée
-              </h4>
-
-              <div className={styles.paymentField}>
-                <span className={styles.fieldLabel}>Nom :</span>
-                <span className={styles.fieldValue}>{order.platform.name}</span>
-              </div>
-
-              {order.platform.description && (
-                <div className={styles.paymentField}>
-                  <span className={styles.fieldLabel}>Description :</span>
-                  <span className={styles.fieldValue}>
-                    {order.platform.description}
-                  </span>
-                </div>
-              )}
-
-              {!order.platform.is_cash_payment && (
-                <>
-                  {order.platform.registered_account_name && (
-                    <div className={styles.paymentField}>
-                      <span className={styles.fieldLabel}>
-                        Compte enregistré :
-                      </span>
-                      <span className={styles.fieldValue}>
-                        {order.platform.registered_account_name}
-                      </span>
-                    </div>
-                  )}
-                  {order.platform.registered_account_number && (
-                    <div className={styles.paymentField}>
-                      <span className={styles.fieldLabel}>
-                        Numéro enregistré :
-                      </span>
-                      <span className={styles.fieldValue}>
-                        {order.platform.registered_account_number}
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            )}
           </div>
         </div>
 

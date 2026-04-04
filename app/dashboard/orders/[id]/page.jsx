@@ -42,17 +42,15 @@ async function getOrderFromDatabase(orderId) {
 
     // admin.orders ne contient PAS platform_name / platform_account_name / platform_account_number
     // Ces colonnes vivent dans admin.platforms — on les récupère via JOIN
+    // Récupérer la commande et l'application
     const orderQuery = `
       SELECT
-        -- Commande
         o.order_id,
         o.order_client_name,
         o.order_client_email,
         o.order_client_phone,
-        o.order_platform_id,
+        o.order_platform_ids,
         o.order_application_id,
-        o.order_payment_name,
-        o.order_payment_number,
         o.order_price,
         o.order_rent,
         o.order_payment_status,
@@ -62,7 +60,6 @@ async function getOrderFromDatabase(orderId) {
         o.order_created,
         o.order_updated,
 
-        -- Application
         a.application_name,
         a.application_category,
         a.application_images,
@@ -70,18 +67,10 @@ async function getOrderFromDatabase(orderId) {
         a.application_fee,
         a.application_rent,
         a.application_link,
-        a.application_level,
-
-        -- Plateforme (toutes les infos viennent d'ici)
-        p.platform_name,
-        p.account_name   AS platform_account_name,
-        p.account_number AS platform_account_number,
-        p.is_cash_payment,
-        p.description    AS platform_description
+        a.application_level
 
       FROM admin.orders o
       JOIN catalog.applications a ON o.order_application_id = a.application_id
-      JOIN admin.platforms p       ON o.order_platform_id   = p.platform_id
       WHERE o.order_id = $1
     `;
 
@@ -94,12 +83,28 @@ async function getOrderFromDatabase(orderId) {
 
     const row = orderResult.rows[0];
 
-    // ✅ PARSING CORRIGÉ selon le schéma réel :
-    // order_client VARCHAR(255)[] avec CHECK (array_length = 3)
-    // COMMENT: 'Informations client: [nom_complet, email, telephone]'
-    // → index [0] = nom_complet, [1] = email, [2] = telephone
-    // L'ancien code déstructurait en [lastName, firstName, email, phone]
-    // ce qui était faux et collait email+téléphone dans le nom affiché
+    // Récupérer les plateformes séparément via ANY
+    const platformIds = row.order_platform_ids || [];
+    let platforms = [];
+
+    if (platformIds.length > 0) {
+      const platformResult = await client.query(
+        `SELECT
+          platform_id,
+          platform_name,
+          account_name,
+          account_number,
+          is_cash_payment,
+          description
+        FROM admin.platforms
+        WHERE platform_id = ANY($1)`,
+        [platformIds],
+      );
+      platforms = platformResult.rows;
+    }
+
+    const hasCashPayment = platforms.some((p) => p.is_cash_payment);
+
     const clientInfo = {
       fullName: row.order_client_name || 'N/A',
       email: row.order_client_email || 'N/A',
@@ -119,23 +124,17 @@ async function getOrderFromDatabase(orderId) {
 
       client: clientInfo,
 
-      // Informations de paiement fournies par le client lors de la commande
-      payment: {
-        platform_name: row.platform_name,
-        platform_account_name: row.order_payment_name || null,
-        platform_account_number: row.order_payment_number,
-        platform_id: row.order_platform_id,
-      },
+      // Plateformes sélectionnées par le client
+      platforms: platforms.map((p) => ({
+        id: p.platform_id,
+        name: p.platform_name || '[No Name]',
+        is_cash_payment: Boolean(p.is_cash_payment),
+        description: p.description || null,
+        account_name: p.account_name || null,
+        account_number: p.account_number || null,
+      })),
 
-      // Informations de la plateforme enregistrée dans admin.platforms
-      platform: {
-        id: row.order_platform_id,
-        name: row.platform_name || '[No Name]',
-        is_cash_payment: Boolean(row.is_cash_payment),
-        description: row.platform_description || null,
-        registered_account_name: row.platform_account_name || null,
-        registered_account_number: row.platform_account_number,
-      },
+      hasCashPayment,
 
       application: {
         id: row.order_application_id,

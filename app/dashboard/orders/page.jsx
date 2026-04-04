@@ -37,8 +37,7 @@ async function getOrdersFromDatabase() {
         o.order_price,
         o.order_rent,
         o.order_application_id,
-
-        p.platform_name,
+        o.order_platform_ids,
 
         a.application_name,
         a.application_category,
@@ -46,7 +45,6 @@ async function getOrdersFromDatabase() {
 
       FROM admin.orders o
       JOIN catalog.applications a ON o.order_application_id = a.application_id
-      JOIN admin.platforms p       ON o.order_platform_id   = p.platform_id
       ORDER BY o.order_created DESC
     `;
 
@@ -54,7 +52,6 @@ async function getOrdersFromDatabase() {
       SELECT COUNT(*) as total
       FROM admin.orders o
       JOIN catalog.applications a ON o.order_application_id = a.application_id
-      JOIN admin.platforms p       ON o.order_platform_id   = p.platform_id
     `;
 
     const [ordersResult, countResult] = await Promise.all([
@@ -82,7 +79,9 @@ async function getOrdersFromDatabase() {
       order_client_phone: order.order_client_phone || '',
       order_price: parseFloat(order.order_price) || 0,
       order_rent: parseFloat(order.order_rent) || 0,
-      platform_name: order.platform_name || '[Unknown Platform]',
+      order_platform_ids: Array.isArray(order.order_platform_ids)
+        ? order.order_platform_ids
+        : [],
       application_name: order.application_name || '[No Name]',
       application_category: order.application_category,
       application_images: Array.isArray(order.application_images)

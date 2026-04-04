@@ -12,7 +12,7 @@ function OrderSearch({ placeholder, onFilterChange, currentFilters = {} }) {
   useEffect(() => {
     const clientName = currentFilters.order_client_name || '';
     setSearchTerm(clientName);
-  }, [currentFilters.order_client]);
+  }, [currentFilters.order_client_name]);
 
   // Fonction pour notifier le changement de filtre
   const notifyFilterChange = (term) => {

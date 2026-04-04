@@ -452,7 +452,9 @@ const OrdersList = ({ data, totalOrders }) => {
                       <div className={styles.platformBadge}>
                         <MdPayment className={styles.platformIcon} />
                         <span className={styles.platformName}>
-                          {order.platform_name}
+                          {order.order_platform_ids?.length > 0
+                            ? `${order.order_platform_ids.length} plateforme${order.order_platform_ids.length > 1 ? 's' : ''}`
+                            : '[Aucune plateforme]'}
                         </span>
                       </div>
                     </div>
