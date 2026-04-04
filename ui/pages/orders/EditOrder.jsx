@@ -18,8 +18,6 @@ import {
   MdCategory,
   MdLink,
   MdStar,
-  MdAttachMoney,
-  MdCreditCard,
 } from 'react-icons/md';
 import styles from '@/ui/styling/dashboard/orders/editOrder.module.css';
 import { updateOrderPaymentStatus } from '@/app/dashboard/orders/actions';
