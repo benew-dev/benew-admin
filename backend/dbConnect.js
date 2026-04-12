@@ -1,6 +1,6 @@
 // backend/dbConnect.js - OPTIMIZED VERSION
 import { Pool } from 'pg';
-
+import tls from 'tls';
 // ===== CONFIGURATION =====
 
 const requiredEnvVars = [
@@ -31,24 +31,21 @@ function getPoolConfig() {
     database: process.env.DB_NAME,
     password: process.env.DB_PASSWORD,
     port: Number(process.env.PORT_NUMBER) || 5432,
-
-    // ✅ AJOUT : Spécifier le schéma admin
-    // options: '-c search_path=admin',
-
-    // Config optimisée Vercel Serverless
-    max: 5, // Max 5 connexions partagées (au lieu de 20)
-    min: 0, // Min 0 (serverless = pas de connexions idle)
-    idleTimeoutMillis: 30000, // Close idle après 30s (économie ressources)
-    connectionTimeoutMillis: 5000, // Timeout 5s pour connexion
-
-    // Retry automatique intégré au pool
-    // Pas besoin de retry logic manuel !
+    max: 5,
+    min: 0,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
 
     ssl: process.env.DB_CA
       ? {
           require: true,
           rejectUnauthorized: true,
           ca: process.env.DB_CA,
+          // ✅ FIX: Bug node-postgres avec IP addresses
+          // pg passe 'localhost' au lieu de l'IP réelle à la couche TLS
+          checkServerIdentity: (host, cert) => {
+            return tls.checkServerIdentity(process.env.HOST_NAME, cert);
+          },
         }
       : false,
   };
