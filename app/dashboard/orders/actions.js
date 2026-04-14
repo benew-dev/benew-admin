@@ -1,6 +1,6 @@
 'use server';
 
-import { getClient } from '@/backend/dbConnect';
+import { getClient, query } from '@/backend/dbConnect';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import logger from '@/utils/logger';
@@ -204,7 +204,6 @@ export async function updateOrderPaymentStatus(orderId, newStatus) {
  * Récupérer les commandes filtrées
  */
 export async function getFilteredOrders(filters = {}) {
-  let client;
   const startTime = Date.now();
   let requestId;
 
@@ -215,8 +214,6 @@ export async function getFilteredOrders(filters = {}) {
 
     const validatedFilters = validateAndSanitizeFilters(filters);
     const { whereClause, values } = buildSecureWhereClause(validatedFilters);
-
-    client = await getClient();
 
     // ✅ REQUÊTE CORRIGÉE :
     // platform_name vient de admin.platforms via JOIN (pas de colonne directe dans orders)
@@ -253,12 +250,11 @@ export async function getFilteredOrders(filters = {}) {
     `;
 
     const [ordersResult, countResult] = await Promise.all([
-      client.query(mainQuery, values),
-      client.query(countQuery, values),
+      query(mainQuery, values),
+      query(countQuery, values),
     ]);
 
     if (!ordersResult || !Array.isArray(ordersResult.rows)) {
-      await client.cleanup();
       throw new Error('Invalid data structure returned from database');
     }
 
@@ -314,8 +310,6 @@ export async function getFilteredOrders(filters = {}) {
       durationMs: responseTime,
     });
 
-    await client.cleanup();
-
     return { orders: sanitizedOrders, totalOrders: total };
   } catch (error) {
     logger.error('Error filtering orders', {
@@ -327,8 +321,6 @@ export async function getFilteredOrders(filters = {}) {
     trackDatabaseError(error, 'filter_orders_global', {
       requestId: requestId || 'unknown',
     });
-
-    if (client) await client.cleanup();
 
     if (process.env.NODE_ENV === 'production') {
       throw new Error(
