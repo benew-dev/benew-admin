@@ -3,7 +3,7 @@ import OrdersList from '@/ui/pages/orders/OrdersList';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getClient } from '@/backend/dbConnect';
+import { getClient, query } from '@/backend/dbConnect';
 import logger from '@/utils/logger';
 import {
   trackAuth,
@@ -55,8 +55,8 @@ async function getOrdersFromDatabase() {
     `;
 
     const [ordersResult, countResult] = await Promise.all([
-      client.query(mainQuery),
-      client.query(countQuery),
+      query(mainQuery),
+      query(countQuery),
     ]);
 
     if (!ordersResult || !Array.isArray(ordersResult.rows)) {
