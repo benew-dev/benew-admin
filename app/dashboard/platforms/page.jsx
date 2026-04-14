@@ -3,7 +3,7 @@ import PlatformsList from '@/ui/pages/platforms/PlatformsList';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getClient } from '@/backend/dbConnect';
+import { query } from '@/backend/dbConnect';
 import logger from '@/utils/logger';
 import {
   trackAuth,
@@ -18,12 +18,10 @@ export const dynamic = 'force-dynamic';
  * Récupérer les plateformes de paiement depuis la base de données
  */
 async function getPlatformsFromDatabase() {
-  let client;
   const startTime = Date.now();
 
   try {
     // Connexion DB
-    client = await getClient();
 
     // ✅ MODIFIÉ : Ajouter is_cash_payment et description
     const platformsQuery = `
@@ -41,11 +39,10 @@ async function getPlatformsFromDatabase() {
       ORDER BY created_at DESC
     `;
 
-    const result = await client.query(platformsQuery);
+    const result = await query(platformsQuery);
 
     if (!result || !Array.isArray(result.rows)) {
       logger.warn('Platforms query returned invalid data structure');
-      await client.cleanup();
       return [];
     }
 
@@ -94,7 +91,6 @@ async function getPlatformsFromDatabase() {
       durationMs: responseTime,
     });
 
-    await client.cleanup();
     return sanitizedPlatforms;
   } catch (error) {
     const responseTime = Date.now() - startTime;
@@ -108,7 +104,6 @@ async function getPlatformsFromDatabase() {
       durationMs: responseTime,
     });
 
-    if (client) await client.cleanup();
     return [];
   }
 }

@@ -3,7 +3,7 @@ import AddApplication from '@/ui/pages/applications/AddApplication';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getClient } from '@/backend/dbConnect';
+import { query } from '@/backend/dbConnect';
 import logger from '@/utils/logger';
 import {
   trackAuth,
@@ -18,12 +18,9 @@ export const dynamic = 'force-dynamic';
  * Récupérer les templates actifs depuis la base de données
  */
 async function getTemplatesFromDatabase() {
-  let client;
   const startTime = Date.now();
 
   try {
-    client = await getClient();
-
     const templatesQuery = `
       SELECT 
         template_id, 
@@ -38,11 +35,10 @@ async function getTemplatesFromDatabase() {
       ORDER BY template_name ASC, template_added DESC
     `;
 
-    const result = await client.query(templatesQuery);
+    const result = await query(templatesQuery);
 
     if (!result || !Array.isArray(result.rows)) {
       logger.warn('Invalid data structure from templates query');
-      await client.cleanup();
       return [];
     }
 
@@ -68,7 +64,6 @@ async function getTemplatesFromDatabase() {
       durationMs: responseTime,
     });
 
-    await client.cleanup();
     return templates;
   } catch (error) {
     const responseTime = Date.now() - startTime;
@@ -82,7 +77,6 @@ async function getTemplatesFromDatabase() {
       durationMs: responseTime,
     });
 
-    if (client) await client.cleanup();
     return [];
   }
 }

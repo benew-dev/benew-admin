@@ -3,7 +3,7 @@ import VideosList from '@/ui/pages/channel/VideosList';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getClient } from '@/backend/dbConnect';
+import { query } from '@/backend/dbConnect';
 import logger from '@/utils/logger';
 import {
   trackAuth,
@@ -18,12 +18,9 @@ export const dynamic = 'force-dynamic';
  * Récupérer les vidéos depuis la base de données
  */
 async function getVideosFromDatabase() {
-  let client;
   const startTime = Date.now();
 
   try {
-    client = await getClient();
-
     const videosQuery = `
       SELECT
         video_id, video_title, video_description,
@@ -35,11 +32,10 @@ async function getVideosFromDatabase() {
       ORDER BY created_at DESC
     `;
 
-    const result = await client.query(videosQuery);
+    const result = await query(videosQuery);
 
     if (!result || !Array.isArray(result.rows)) {
       logger.warn('Invalid data structure from videos query');
-      await client.cleanup();
       return [];
     }
 
@@ -71,7 +67,6 @@ async function getVideosFromDatabase() {
       durationMs: responseTime,
     });
 
-    await client.cleanup();
     return videos;
   } catch (error) {
     const responseTime = Date.now() - startTime;
@@ -85,7 +80,6 @@ async function getVideosFromDatabase() {
       durationMs: responseTime,
     });
 
-    if (client) await client.cleanup();
     return [];
   }
 }

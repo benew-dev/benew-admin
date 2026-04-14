@@ -3,7 +3,7 @@ import ApplicationsList from '@/ui/pages/applications/ApplicationsList';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getClient } from '@/backend/dbConnect';
+import { query } from '@/backend/dbConnect';
 import logger from '@/utils/logger';
 import {
   trackAuth,
@@ -18,12 +18,9 @@ export const dynamic = 'force-dynamic';
  * Récupérer les applications depuis la base de données
  */
 async function getApplicationsFromDatabase() {
-  let client;
   const startTime = Date.now();
 
   try {
-    client = await getClient();
-
     const applicationsQuery = `
       SELECT 
         application_id, 
@@ -42,11 +39,10 @@ async function getApplicationsFromDatabase() {
       ORDER BY created_at DESC
     `;
 
-    const result = await client.query(applicationsQuery);
+    const result = await query(applicationsQuery);
 
     if (!result || !Array.isArray(result.rows)) {
       logger.warn('Invalid data structure from applications query');
-      await client.cleanup();
       return [];
     }
 
@@ -77,7 +73,6 @@ async function getApplicationsFromDatabase() {
       durationMs: responseTime,
     });
 
-    await client.cleanup();
     return applications;
   } catch (error) {
     const responseTime = Date.now() - startTime;
@@ -91,7 +86,6 @@ async function getApplicationsFromDatabase() {
       durationMs: responseTime,
     });
 
-    if (client) await client.cleanup();
     return [];
   }
 }
