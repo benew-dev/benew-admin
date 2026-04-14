@@ -36,6 +36,9 @@ function getPoolConfig() {
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
 
+    // ✅ search_path via options de connexion — pas besoin de client.query()
+    options: '-c search_path=admin,public',
+
     ssl: process.env.DB_CA
       ? {
           require: true,
