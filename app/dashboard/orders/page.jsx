@@ -3,7 +3,7 @@ import OrdersList from '@/ui/pages/orders/OrdersList';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
-import { getClient, query } from '@/backend/dbConnect';
+import { query } from '@/backend/dbConnect';
 import logger from '@/utils/logger';
 import {
   trackAuth,
@@ -15,15 +15,12 @@ export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 async function getOrdersFromDatabase() {
-  let client;
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
 
   logger.info('Orders fetch process started', { requestId });
 
   try {
-    client = await getClient();
-
     // ✅ CORRIGÉ : platform_name vient de admin.platforms via JOIN
     // admin.orders ne contient PAS de colonne platform_name
     const mainQuery = `
@@ -63,7 +60,6 @@ async function getOrdersFromDatabase() {
       logger.warn('Orders query returned invalid data structure', {
         requestId,
       });
-      await client.cleanup();
       return { orders: [], totalOrders: 0 };
     }
 
@@ -104,7 +100,6 @@ async function getOrdersFromDatabase() {
       durationMs: responseTime,
     });
 
-    await client.cleanup();
     return { orders: sanitizedOrders, totalOrders: total };
   } catch (error) {
     logger.error('Global Orders Error', {
@@ -118,7 +113,6 @@ async function getOrdersFromDatabase() {
       critical: 'true',
     });
 
-    if (client) await client.cleanup();
     return { orders: [], totalOrders: 0 };
   }
 }
