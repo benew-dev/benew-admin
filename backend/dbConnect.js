@@ -67,14 +67,6 @@ export function getPool() {
 
     // Connect event (debug)
     pool.on('connect', (client) => {
-      setImmediate(() => {
-        client.query('SET search_path TO admin, public').catch((err) => {
-          console.error(
-            `[${getTimestamp()}] ❌ search_path error:`,
-            err.message,
-          );
-        });
-      });
       console.log(`[${getTimestamp()}] ✅ New client connected to pool`);
     });
 
