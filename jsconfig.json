@@ -2,6 +2,7 @@
   "compilerOptions": {
     // Sets a base directory from which to resolve bare specifier module names.
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
 
     //A series of entries which re-map imports to lookup locations relative to the baseUrl if set,
     // or to the tsconfig file itself otherwise.
